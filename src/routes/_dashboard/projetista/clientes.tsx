@@ -209,6 +209,22 @@ function ProjetistaClientesPage() {
     onError: (e: any) => toast.error('Erro ao atribuir: ' + (e?.message ?? e)),
   });
 
+  const releaseAssignment = useMutation({
+    mutationFn: async (clienteId: string) => {
+      if (!isAdmin) throw new Error('Apenas administradores podem liberar atribuições.');
+      const { error } = await supabase
+        .from('clientes')
+        .update({ projetista_id: null })
+        .eq('id', clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
+      toast.success('Atribuição liberada. Cliente em aberto novamente.');
+    },
+    onError: (e: any) => toast.error('Erro ao liberar: ' + (e?.message ?? e)),
+  });
+
   const handleSaveClient = () => {
     console.log('[clientes] handleSaveClient clicked', { clientForm, user });
     if (!clientForm.nome.trim()) {
