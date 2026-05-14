@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   LayoutDashboard, 
   Users, 
@@ -36,6 +38,22 @@ export function DashboardLayout() {
   const { user, role, setRole, setUser } = useAuthStore();
   const { data: team } = useTeam();
 
+  // Carrega o admin real do banco (projetos.projetista_id e agendamentos.criado_por
+  // têm FK pra users(id); um id fake quebra os inserts).
+  const { data: adminUser } = useQuery({
+    queryKey: ['admin-user'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'ADMIN')
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const adminLinks = [
     { title: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
     { title: 'Equipe', icon: Users, to: '/admin/equipe' },
@@ -57,16 +75,17 @@ export function DashboardLayout() {
     setRole(newRole);
     if (newRole === 'PROJETISTA' && team && team.length > 0) {
       setUser(team[0]);
-    } else if (newRole === 'ADMIN') {
-      setUser({
-        id: '00000000-0000-0000-0000-000000000000',
-        nome: 'Admin Teste',
-        email: 'rangelmaker@gmail.com',
-        role: 'ADMIN',
-        created_at: new Date().toISOString(),
-      });
+    } else if (newRole === 'ADMIN' && adminUser) {
+      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
     }
   };
+
+  // Auto-corrige sessão admin com id inválido (legado do localStorage).
+  React.useEffect(() => {
+    if (role === 'ADMIN' && adminUser && user?.id !== adminUser.id) {
+      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
+    }
+  }, [role, adminUser, user?.id, setUser]);
 
   const currentLinks = role === 'ADMIN' ? adminLinks : projetistaLinks;
 
