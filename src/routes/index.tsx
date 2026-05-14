@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuthStore } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -25,20 +27,23 @@ const LOGO_URL = 'https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/pub
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setRole } = useAuthStore();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
-        .eq('avatar_url', password as any); // This will fail now because I renamed the column
+        .eq('password', password);
 
       if (error) throw error;
 
@@ -51,17 +56,21 @@ export function LoginPage() {
           created_at: foundUser.created_at || new Date().toISOString()
         });
         toast.success(`Bem-vindo, ${foundUser.nome}!`);
-        
+
         if (foundUser.role === 'ADMIN') {
           navigate({ to: "/admin/dashboard" });
         } else {
           navigate({ to: "/projetista/dashboard" });
         }
       } else {
-        toast.error("E-mail ou senha incorretos.");
+        const msg = "E-mail ou senha incorretos.";
+        setErrorMessage(msg);
+        toast.error(msg);
       }
     } catch (error: any) {
-      toast.error("Erro ao realizar login: " + error.message);
+      const msg = "Erro ao conectar com o servidor: " + (error?.message ?? "tente novamente");
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -91,13 +100,13 @@ export function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="exemplo@dfmoveis.com" 
-                  required 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="exemplo@dfmoveis.com"
+                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); if (errorMessage) setErrorMessage(null); }}
                   className="bg-background/50"
                 />
               </div>
@@ -108,15 +117,32 @@ export function LoginPage() {
                     Esqueceu a senha?
                   </Button>
                 </div>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-background/50"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); if (errorMessage) setErrorMessage(null); }}
+                    className="bg-background/50 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
+              {errorMessage && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              )}
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
