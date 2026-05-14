@@ -54,14 +54,14 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-md space-y-8 flex flex-col items-center">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="w-80 h-80 flex items-center justify-center">
+    <div className="h-screen w-full flex items-center justify-center bg-muted/30 p-4 overflow-hidden">
+      <div className="w-full max-w-md space-y-4 flex flex-col items-center">
+        <div className="flex flex-col items-center space-y-2 text-center">
+          <div className="w-64 h-64 flex items-center justify-center">
             <img 
               src={LOGO_URL} 
               alt="DF Móveis" 
-              className="w-full h-full object-contain brightness-110 contrast-125 dark:brightness-0 dark:invert transition-all duration-300"
+              className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten transition-all duration-300"
             />
           </div>
           <div className="space-y-2">
