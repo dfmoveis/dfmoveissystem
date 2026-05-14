@@ -77,7 +77,7 @@ export function DashboardLayout() {
                 <img 
                   src="https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778781933453_njvsxp_Design_sem_nome.png" 
                   alt="DF Móveis" 
-                  className="w-full h-full object-contain brightness-110 contrast-125 mix-blend-multiply dark:mix-blend-normal transform transition-transform hover:scale-105"
+                  className="w-full h-full object-contain brightness-110 contrast-125 dark:brightness-0 dark:invert transform transition-transform hover:scale-105"
                 />
               </div>
             </div>
