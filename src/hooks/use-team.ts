@@ -21,10 +21,10 @@ export function useTeam() {
   });
 
   const addMember = useMutation({
-    mutationFn: async (newMember: Partial<User>) => {
+    mutationFn: async (newMember: { nome: string; email: string; avatar_url?: string }) => {
       const { data, error } = await supabase
         .from('users')
-        .insert([{ ...newMember, role: 'PROJETISTA' }])
+        .insert([{ ...newMember, role: 'PROJETISTA' as const }])
         .select()
         .single();
 
