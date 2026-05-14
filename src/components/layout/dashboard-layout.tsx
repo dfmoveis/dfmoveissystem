@@ -121,7 +121,15 @@ export function DashboardLayout() {
                 <span className="text-sm font-medium truncate">{user?.nome}</span>
                 <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
               </div>
-              <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="ml-auto h-8 w-8"
+                onClick={() => {
+                  setUser(null);
+                  window.location.href = "/";
+                }}
+              >
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
