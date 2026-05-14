@@ -26,6 +26,7 @@ import {
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 import { format, startOfDay, isSameDay, parseISO, areIntervalsOverlapping } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 
 export const Route = createFileRoute('/_dashboard/agenda')({
