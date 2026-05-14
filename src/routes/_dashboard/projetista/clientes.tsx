@@ -157,7 +157,25 @@ function ProjetistaClientesPage() {
         fonte: data.fonte || null,
       };
       console.log('[projetos] inserting', payload);
-      const { error } = await supabase.from('projetos').insert([payload]);
+      let { error } = await supabase.from('projetos').insert([payload]);
+
+      if (error?.code === 'PGRST204' && error.message?.includes("'fonte'")) {
+        const fallbackPayload = {
+          cliente_id: payload.cliente_id,
+          projetista_id: payload.projetista_id,
+          status: payload.status,
+          status_venda: payload.status_venda,
+          data_inicio: payload.data_inicio,
+          prazo_termino: payload.prazo_termino,
+          valor_venda: payload.valor_venda,
+          observacoes: payload.observacoes,
+        };
+
+        console.warn('[projetos] fonte column unavailable, retrying without fonte');
+        const fallbackInsert = await supabase.from('projetos').insert([fallbackPayload]);
+        error = fallbackInsert.error;
+      }
+
       if (error) {
         console.error('[projetos] insert error', error);
         throw error;
