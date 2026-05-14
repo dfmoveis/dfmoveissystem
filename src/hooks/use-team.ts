@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types/database';
 import { toast } from 'sonner';
 
+export type MemberStatus = 'PENDENTE' | 'ATIVO' | 'BLOQUEADO';
+
 export function useTeam() {
   const queryClient = useQueryClient();
 
@@ -16,28 +18,22 @@ export function useTeam() {
         .order('nome');
 
       if (error) throw error;
-      return data as User[];
+      return data as (User & { status?: MemberStatus; password?: string })[];
     },
   });
 
-  const addMember = useMutation({
-    mutationFn: async (newMember: { nome: string; email: string; password: string; avatar_url?: string }) => {
-      const { data, error } = await supabase
-        .from('users')
-        .insert([{ ...newMember, role: 'PROJETISTA' as const }])
-        .select()
-        .single();
-
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: MemberStatus }) => {
+      const { error } = await supabase.from('users').update({ status }).eq('id', id);
       if (error) throw error;
-      return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['team'] });
-      toast.success('Membro da equipe adicionado com sucesso!');
+      const label =
+        vars.status === 'ATIVO' ? 'aprovado' : vars.status === 'BLOQUEADO' ? 'bloqueado' : 'atualizado';
+      toast.success(`Projetista ${label} com sucesso!`);
     },
-    onError: (error) => {
-      toast.error('Erro ao adicionar membro: ' + error.message);
-    },
+    onError: (err: any) => toast.error('Erro ao atualizar status: ' + err.message),
   });
 
   const deleteMember = useMutation({
@@ -51,5 +47,5 @@ export function useTeam() {
     },
   });
 
-  return { ...query, addMember, deleteMember };
+  return { ...query, updateStatus, deleteMember };
 }
