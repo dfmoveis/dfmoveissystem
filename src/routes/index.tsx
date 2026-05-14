@@ -12,6 +12,10 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const { user, role } = await ensureAuthStoreHydrated();
     if (user) {
       throw redirect({
