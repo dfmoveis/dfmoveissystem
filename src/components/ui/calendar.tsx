@@ -122,10 +122,9 @@ function Calendar({
 
           return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
         },
-        DayButton: (props) => (
+        DayButton: (dayProps) => (
           <CalendarDayButton 
-            {...props} 
-            tooltip={props.day.date ? props.day.date.toISOString().split('T')[0] : undefined}
+            {...dayProps} 
             dayTooltips={dayTooltips}
           />
         ),
