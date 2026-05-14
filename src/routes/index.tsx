@@ -57,7 +57,7 @@ function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md space-y-8 flex flex-col items-center">
         <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="w-40 h-40 flex items-center justify-center">
+          <div className="w-80 h-80 flex items-center justify-center">
             <img 
               src={LOGO_URL} 
               alt="DF Móveis" 
