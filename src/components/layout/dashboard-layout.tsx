@@ -8,7 +8,8 @@ import {
   DollarSign, 
   LogOut,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/hooks/use-auth';
