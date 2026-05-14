@@ -41,6 +41,7 @@ export function DashboardLayout() {
     { title: 'CRM (Clientes)', icon: UserSquare2, to: '/admin/crm' },
     { title: 'Agenda', icon: CalendarDays, to: '/agenda' },
     { title: 'Comissões', icon: DollarSign, to: '/admin/comissoes' },
+    { title: 'Meu Perfil', icon: UserSquare2, to: '/projetista/perfil' },
   ];
 
   const projetistaLinks = [
