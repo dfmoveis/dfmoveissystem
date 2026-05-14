@@ -39,7 +39,8 @@ export function DashboardLayout() {
   const adminLinks = [
     { title: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
     { title: 'Equipe', icon: Users, to: '/admin/equipe' },
-    { title: 'CRM (Clientes)', icon: UserSquare2, to: '/admin/crm' },
+    { title: 'Clientes', icon: UserSquare2, to: '/projetista/clientes' },
+    { title: 'CRM (Pipeline)', icon: Briefcase, to: '/admin/crm' },
     { title: 'Agenda', icon: CalendarDays, to: '/agenda' },
     { title: 'Comissões', icon: DollarSign, to: '/admin/comissoes' },
     { title: 'Meu Perfil', icon: UserSquare2, to: '/projetista/perfil' },
