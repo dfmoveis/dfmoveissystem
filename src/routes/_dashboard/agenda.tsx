@@ -169,25 +169,31 @@ function AgendaPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Agenda de Atendimentos</h1>
-          <p className="text-muted-foreground text-sm">Visualize e gerencie as reuniões e compromissos de toda a equipe.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Agenda de Atendimentos</h1>
+          <p className="text-muted-foreground text-sm">Organize as reuniões e compromissos da DF Móveis.</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingEventId(null);
+            setFormData({ titulo: '', descricao: '', data: '', hora_inicio: '', hora_fim: '', tipo: 'REUNIAO', cliente_id: '' });
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button className="bg-primary hover:bg-primary/90 shadow-sm">
               <Plus className="mr-2 h-4 w-4" />
               Novo Agendamento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
-              <DialogTitle>Agendar Compromisso</DialogTitle>
+              <DialogTitle>{editingEventId ? 'Editar Compromisso' : 'Agendar Compromisso'}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-5 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="titulo">Título</Label>
                 <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({...formData, titulo: e.target.value})} placeholder="Ex: Reunião de Briefing" />
@@ -198,15 +204,15 @@ function AgendaPage() {
                   <Input id="data" type="date" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="tipo">Tipo</Label>
+                  <Label htmlFor="tipo">Tipo de Compromisso</Label>
                   <Select value={formData.tipo} onValueChange={(v) => setFormData({...formData, tipo: v})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="REUNIAO">Reunião</SelectItem>
-                      <SelectItem value="ATENDIMENTO">Atendimento</SelectItem>
-                      <SelectItem value="VISITA">Visita Técnica</SelectItem>
+                      <SelectItem value="VISITA">📏 Tirar Medida (Verde)</SelectItem>
+                      <SelectItem value="ATENDIMENTO">📞 Atendimento (Azul)</SelectItem>
+                      <SelectItem value="REUNIAO">🤝 Reunião Cliente (Vermelho)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -222,7 +228,7 @@ function AgendaPage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="cliente">Cliente (Opcional)</Label>
+                <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
                 <Select value={formData.cliente_id} onValueChange={(v) => setFormData({...formData, cliente_id: v})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um cliente" />
@@ -236,74 +242,119 @@ function AgendaPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={() => createEvent.mutate(formData)} disabled={createEvent.isPending}>
-                Confirmar Agendamento
+              <Button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending} className="w-full sm:w-auto">
+                {editingEventId ? 'Salvar Alterações' : 'Confirmar Agendamento'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-4">
-        {isLoading ? (
-          <div className="flex justify-center p-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <Card className="lg:col-span-5 border-none shadow-md h-fit">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-lg">Calendário</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              locale={ptBR}
+              className="rounded-md w-full"
+              modifiers={modifiers}
+              modifiersClassNames={{
+                VISITA: "bg-green-100 text-green-700 font-bold border-b-2 border-green-500",
+                ATENDIMENTO: "bg-blue-100 text-blue-700 font-bold border-b-2 border-blue-500",
+                REUNIAO: "bg-red-100 text-red-700 font-bold border-b-2 border-red-500"
+              }}
+            />
+            <div className="mt-4 p-3 border-t grid grid-cols-1 gap-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Legendas:</p>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <div className="w-3 h-3 rounded bg-green-500" />
+                <span>📏 Tirar Medida (Verde)</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <div className="w-3 h-3 rounded bg-blue-500" />
+                <span>📞 Atendimento (Azul)</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <div className="w-3 h-3 rounded bg-red-500" />
+                <span>🤝 Reunião com Cliente (Vermelho)</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="lg:col-span-7 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary" />
+              Compromissos do Dia: {selectedDate ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR }) : ''}
+            </h2>
           </div>
-        ) : events?.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-              <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground font-medium">Nenhum agendamento para exibir.</p>
-              <p className="text-xs text-muted-foreground mt-1">Clique em "Novo Agendamento" para começar.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
-            {events?.map((event: any) => (
-              <Card key={event.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/5 border border-primary/10">
-                      <span className="text-[10px] uppercase font-bold text-primary opacity-70">
-                        {new Date(event.data_inicio).toLocaleDateString('pt-BR', { month: 'short' })}
-                      </span>
-                      <span className="text-lg font-bold text-primary leading-tight">
-                        {new Date(event.data_inicio).getDate()}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-foreground leading-none">{event.titulo}</h3>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(event.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - 
-                          {new Date(event.data_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {event.criado_por?.nome}
-                        </span>
-                        {event.cliente && (
-                          <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground font-medium">
-                            Cliente: {event.cliente.nome}
+
+          {isLoading ? (
+            <div className="flex justify-center p-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <Card className="border-dashed bg-muted/20">
+              <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                <CalendarIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
+                <p className="text-muted-foreground font-medium">Nenhum compromisso para este dia.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3">
+              {filteredEvents.map((event: any) => (
+                <Card key={event.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent overflow-hidden group" style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2 rounded-lg bg-muted/50`}>
+                        <Clock className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-foreground">{event.titulo}</h3>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_BADGE_COLORS[event.tipo]}`}>
+                            {TIPO_LABELS[event.tipo]}
                           </span>
-                        )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span className="font-semibold text-primary/80">
+                            {format(parseISO(event.data_inicio), "HH:mm")} - {format(parseISO(event.data_fim), "HH:mm")}
+                          </span>
+                          <span className="flex items-center gap-1 border-l pl-3">
+                            <User className="h-3 w-3" />
+                            {event.criado_por?.nome}
+                          </span>
+                          {event.cliente && (
+                            <span className="font-medium bg-muted px-2 rounded">
+                              Cliente: {event.cliente.nome}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${
-                    event.tipo === 'REUNIAO' ? 'bg-blue-100 text-blue-700' :
-                    event.tipo === 'VISITA' ? 'bg-purple-100 text-purple-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
-                    {event.tipo}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
   );
 }
