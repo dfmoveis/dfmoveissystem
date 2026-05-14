@@ -4,6 +4,10 @@ import { ensureAuthStoreHydrated } from "@/hooks/use-auth";
 
 export const Route = createFileRoute('/_dashboard')({
   beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const { user } = await ensureAuthStoreHydrated();
     if (!user) {
       throw redirect({
