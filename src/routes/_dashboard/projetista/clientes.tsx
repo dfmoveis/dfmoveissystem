@@ -401,23 +401,50 @@ function ProjetistaClientesPage() {
                         {c.endereco || '-'}
                       </TableCell>
                       <TableCell>
-                        {c.projetista ? (
-                          <Badge
-                            className={cn(
-                              'gap-1',
-                              isMine
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
-                            )}
-                          >
-                            {isMine && <Star className="h-3 w-3 fill-current" />}
-                            {isMine ? 'Meu Cliente' : c.projetista.nome}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            Sem responsável
-                          </Badge>
-                        )}
+                        {(() => {
+                          const assigned = !!c.projetista_id;
+                          const canEdit = !assigned || isAdmin;
+                          if (!canEdit) {
+                            return (
+                              <Badge
+                                className={cn(
+                                  'gap-1',
+                                  isMine
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
+                                )}
+                              >
+                                {isMine && <Star className="h-3 w-3 fill-current" />}
+                                {isMine ? 'Meu Cliente' : c.projetista?.nome}
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <Select
+                              value={c.projetista_id ?? ''}
+                              onValueChange={(v) =>
+                                assignProjetista.mutate({ clienteId: c.id, projetistaId: v })
+                              }
+                              disabled={assignProjetista.isPending}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  'h-8 w-[180px]',
+                                  isMine && 'border-emerald-300 bg-emerald-50 text-emerald-800',
+                                )}
+                              >
+                                <SelectValue placeholder="Em aberto — selecionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {projetistas?.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.id === user?.id ? `${p.nome} (eu)` : p.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
