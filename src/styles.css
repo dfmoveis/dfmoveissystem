@@ -2,6 +2,13 @@
 @source "../src";
 @import "tw-animate-css";
 
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    content-visibility: auto;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /*

@@ -102,21 +102,6 @@ export function DashboardLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <SidebarGroup className="mt-auto">
-              <SidebarGroupLabel>Desenvolvimento</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="px-3 py-2">
-                  <select 
-                    value={role} 
-                    onChange={(e) => handleRoleChange(e.target.value as any)}
-                    className="w-full p-2 text-xs rounded border bg-background"
-                  >
-                    <option value="ADMIN">Visão ADMIN</option>
-                    <option value="PROJETISTA">Visão PROJETISTA</option>
-                  </select>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-border">
             <div className="flex items-center gap-3 px-2 py-1">

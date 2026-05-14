@@ -7,11 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import * as React from "react";
 
 import appCss from "../styles.css?url";
 
-function NotFoundComponent() {
-  return (
+// Lazy load components that are not needed immediately
+const NotFoundComponent = React.lazy(() => Promise.resolve({
+  default: () => (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
@@ -29,8 +31,8 @@ function NotFoundComponent() {
         </div>
       </div>
     </div>
-  );
-}
+  )
+}));
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
@@ -72,14 +74,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "DF Móveis Planejados" },
+      { name: "description", content: "Sistema de Gestão de Projetos e Vendas" },
+      { name: "author", content: "DF Móveis" },
+      { property: "og:title", content: "DF Móveis Planejados" },
+      { property: "og:description", content: "Sistema de Gestão de Projetos e Vendas" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -90,13 +91,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  notFoundComponent: () => (
+    <React.Suspense fallback={null}>
+      <NotFoundComponent />
+    </React.Suspense>
+  ),
   errorComponent: ErrorComponent,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
