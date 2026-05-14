@@ -94,6 +94,7 @@ function ProjetistaClientesPage() {
 
   const createClient = useMutation({
     mutationFn: async (data: typeof clientForm) => {
+      console.log('[clientes] inserting client', data);
       if (!user?.id) throw new Error('Usuário não autenticado.');
       const { data: inserted, error } = await supabase
         .from('clientes')
@@ -108,6 +109,7 @@ function ProjetistaClientesPage() {
         ])
         .select('id, nome')
         .single();
+      console.log('[clientes] insert result', { inserted, error });
       if (error) throw error;
       return inserted as { id: string; nome: string };
     },
@@ -119,7 +121,10 @@ function ProjetistaClientesPage() {
       setPendingClient(created);
       setIsProjectDialogOpen(true);
     },
-    onError: (e: any) => toast.error('Erro ao salvar cliente: ' + (e?.message ?? e)),
+    onError: (e: any) => {
+      console.error('[clientes] insert error', e);
+      toast.error('Erro ao salvar cliente: ' + (e?.message ?? e));
+    },
   });
 
   const createProject = useMutation({
@@ -152,12 +157,17 @@ function ProjetistaClientesPage() {
   });
 
   const handleSaveClient = () => {
+    console.log('[clientes] handleSaveClient clicked', { clientForm, user });
     if (!clientForm.nome.trim()) {
       toast.error('Informe o nome do cliente.');
       return;
     }
     if (!clientForm.telefone.trim()) {
       toast.error('Informe o WhatsApp do cliente.');
+      return;
+    }
+    if (!user?.id) {
+      toast.error('Sessão inválida. Faça login novamente.');
       return;
     }
     createClient.mutate(clientForm);
