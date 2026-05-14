@@ -170,7 +170,10 @@ function ProjetistaClientesPage() {
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
-    onError: (e: any) => toast.error('Erro ao criar projeto: ' + (e?.message ?? e)),
+    onError: (e: any) =>
+      toast.error(
+        'Erro ao criar projeto: ' + (e?.message || e?.details || e?.hint || 'erro desconhecido'),
+      ),
   });
 
   const assignProjetista = useMutation({
