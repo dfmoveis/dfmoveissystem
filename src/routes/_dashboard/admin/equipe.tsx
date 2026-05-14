@@ -22,12 +22,26 @@ function EquipePage() {
   const { data: team, isLoading, addMember, deleteMember } = useTeam();
   const [isOpen, setIsOpen] = useState(false);
   const [newMember, setNewMember] = useState({ nome: '', email: '' });
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const generateRandomPassword = () => {
+    const numbers = Math.floor(1000 + Math.random() * 9000);
+    return `DF${numbers}`;
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addMember.mutateAsync(newMember);
+    const password = generateRandomPassword();
+    await addMember.mutateAsync({ ...newMember, avatar_url: password }); // Using avatar_url to store temp password in mock
+    setGeneratedPassword(password);
     setNewMember({ nome: '', email: '' });
-    setIsOpen(false);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
