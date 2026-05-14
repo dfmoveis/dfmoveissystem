@@ -60,32 +60,72 @@ function EquipePage() {
             <DialogHeader>
               <DialogTitle>Adicionar Projetista</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome Completo</Label>
-                <Input 
-                  id="nome" 
-                  value={newMember.nome}
-                  onChange={e => setNewMember(prev => ({ ...prev, nome: e.target.value }))}
-                  placeholder="Ex: Carlos Designer" 
-                  required 
-                />
+            {generatedPassword ? (
+              <div className="space-y-6 py-6 text-center">
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <Check className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-lg">Projetista Adicionado!</h3>
+                  <p className="text-sm text-muted-foreground px-4">
+                    Copie a senha abaixo e envie para o novo integrante da equipe.
+                  </p>
+                </div>
+                
+                <div className="bg-muted p-4 rounded-lg flex items-center justify-between group relative">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono font-bold text-xl tracking-widest">{generatedPassword}</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={copyToClipboard}
+                    className="shrink-0"
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => {
+                    setGeneratedPassword('');
+                    setIsOpen(false);
+                  }}
+                >
+                  Concluir
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail Corporativo</Label>
-                <Input 
-                  id="email" 
-                  type="email"
-                  value={newMember.email}
-                  onChange={e => setNewMember(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="carlos@dfmoveis.com" 
-                  required 
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={addMember.isPending}>
-                {addMember.isPending ? 'Salvando...' : 'Adicionar'}
-              </Button>
-            </form>
+            ) : (
+              <form onSubmit={handleAdd} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome Completo</Label>
+                  <Input 
+                    id="nome" 
+                    value={newMember.nome}
+                    onChange={e => setNewMember(prev => ({ ...prev, nome: e.target.value }))}
+                    placeholder="Ex: Carlos Designer" 
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail Corporativo</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    value={newMember.email}
+                    onChange={e => setNewMember(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="carlos@dfmoveis.com" 
+                    required 
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={addMember.isPending}>
+                  {addMember.isPending ? 'Salvando...' : 'Adicionar e Gerar Senha'}
+                </Button>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
