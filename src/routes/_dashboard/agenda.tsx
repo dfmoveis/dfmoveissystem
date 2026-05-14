@@ -180,12 +180,22 @@ function AgendaPage() {
         criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
       };
 
+      const payload = {
+        titulo: event.titulo,
+        descricao: event.descricao,
+        data_inicio: data_inicio.toISOString(),
+        data_fim: data_fim.toISOString(),
+        tipo: event.tipo,
+        cliente_id: event.cliente_id || null,
+        criado_por: user.id,
+      };
+
       if (editingEventId) {
         const { error } = await supabase.from('agendamentos').update(payload).eq('id', editingEventId);
-        if (error) throw error;
+        if (error) { console.error('[agenda] update error', error); throw error; }
       } else {
         const { error } = await supabase.from('agendamentos').insert([payload]);
-        if (error) throw error;
+        if (error) { console.error('[agenda] insert error', error); throw error; }
       }
     },
     onSuccess: () => {
