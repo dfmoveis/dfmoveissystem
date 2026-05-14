@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Clock, User, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/hooks/use-auth';
@@ -18,10 +18,31 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { format, startOfDay, isSameDay, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export const Route = createFileRoute('/_dashboard/agenda')({
   component: AgendaPage,
 });
+
+const TIPO_LABELS: Record<string, string> = {
+  'REUNIAO': 'Reunião com Cliente',
+  'ATENDIMENTO': 'Atendimento',
+  'VISITA': 'Tirar Medida'
+};
+
+const TIPO_COLORS: Record<string, string> = {
+  'REUNIAO': 'bg-red-500 text-white',
+  'ATENDIMENTO': 'bg-blue-500 text-white',
+  'VISITA': 'bg-green-500 text-white'
+};
+
+const TIPO_BADGE_COLORS: Record<string, string> = {
+  'REUNIAO': 'bg-red-100 text-red-700',
+  'ATENDIMENTO': 'bg-blue-100 text-blue-700',
+  'VISITA': 'bg-green-100 text-green-700'
+};
 
 function AgendaPage() {
   const { user } = useAuthStore();
