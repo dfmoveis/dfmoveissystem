@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserPlus, Star, Plus } from 'lucide-react';
+import { UserPlus, Star, Plus, Hand, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -207,6 +207,22 @@ function ProjetistaClientesPage() {
       toast.success('Atendimento atualizado!');
     },
     onError: (e: any) => toast.error('Erro ao atribuir: ' + (e?.message ?? e)),
+  });
+
+  const releaseAssignment = useMutation({
+    mutationFn: async (clienteId: string) => {
+      if (!isAdmin) throw new Error('Apenas administradores podem liberar atribuições.');
+      const { error } = await supabase
+        .from('clientes')
+        .update({ projetista_id: null })
+        .eq('id', clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
+      toast.success('Atribuição liberada. Cliente em aberto novamente.');
+    },
+    onError: (e: any) => toast.error('Erro ao liberar: ' + (e?.message ?? e)),
   });
 
   const handleSaveClient = () => {
@@ -427,46 +443,107 @@ function ProjetistaClientesPage() {
                       <TableCell>
                         {(() => {
                           const assigned = !!c.projetista_id;
-                          const canEdit = !assigned || isAdmin;
-                          if (!canEdit) {
+
+                          // Caso 1: Cliente em aberto (sem projetista)
+                          if (!assigned) {
+                            if (isAdmin) {
+                              // Admin pode atribuir qualquer projetista
+                              return (
+                                <Select
+                                  value=""
+                                  onValueChange={(v) =>
+                                    assignProjetista.mutate({ clienteId: c.id, projetistaId: v })
+                                  }
+                                  disabled={assignProjetista.isPending}
+                                >
+                                  <SelectTrigger className="h-8 w-[200px]">
+                                    <SelectValue placeholder="Em aberto — atribuir" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {projetistas?.map((p) => (
+                                      <SelectItem key={p.id} value={p.id}>
+                                        {p.nome}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              );
+                            }
+                            // Projetista: botão "Assumir Cliente"
                             return (
-                              <Badge
-                                className={cn(
-                                  'gap-1',
-                                  isMine
-                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
-                                )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  assignProjetista.mutate({
+                                    clienteId: c.id,
+                                    projetistaId: user!.id,
+                                  })
+                                }
+                                disabled={assignProjetista.isPending}
+                                className="h-8"
                               >
-                                {isMine && <Star className="h-3 w-3 fill-current" />}
-                                {isMine ? 'Meu Cliente' : c.projetista?.nome}
-                              </Badge>
+                                <Hand className="h-3 w-3 mr-1" />
+                                Assumir Cliente
+                              </Button>
                             );
                           }
-                          return (
-                            <Select
-                              value={c.projetista_id ?? ''}
-                              onValueChange={(v) =>
-                                assignProjetista.mutate({ clienteId: c.id, projetistaId: v })
-                              }
-                              disabled={assignProjetista.isPending}
+
+                          // Caso 2: Cliente já atribuído
+                          const badge = (
+                            <Badge
+                              className={cn(
+                                'gap-1',
+                                isMine
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
+                              )}
                             >
-                              <SelectTrigger
-                                className={cn(
-                                  'h-8 w-[180px]',
-                                  isMine && 'border-emerald-300 bg-emerald-50 text-emerald-800',
-                                )}
+                              {isMine && <Star className="h-3 w-3 fill-current" />}
+                              {isMine ? `Eu (${c.projetista?.nome})` : c.projetista?.nome}
+                            </Badge>
+                          );
+
+                          if (!isAdmin) {
+                            // Projetista NÃO pode alterar — só visualiza
+                            return badge;
+                          }
+
+                          // Admin: badge + transferir + liberar
+                          return (
+                            <div className="flex items-center gap-2">
+                              {badge}
+                              <Select
+                                value={c.projetista_id ?? ''}
+                                onValueChange={(v) =>
+                                  assignProjetista.mutate({ clienteId: c.id, projetistaId: v })
+                                }
+                                disabled={assignProjetista.isPending}
                               >
-                                <SelectValue placeholder="Em aberto — selecionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {projetistas?.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {p.id === user?.id ? `${p.nome} (eu)` : p.nome}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                <SelectTrigger className="h-7 w-[150px] text-xs">
+                                  <SelectValue placeholder="Transferir" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {projetistas
+                                    ?.filter((p) => p.id !== c.projetista_id)
+                                    .map((p) => (
+                                      <SelectItem key={p.id} value={p.id}>
+                                        {p.nome}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-7 px-2"
+                                onClick={() => releaseAssignment.mutate(c.id)}
+                                disabled={releaseAssignment.isPending}
+                                title="Liberar atribuição"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
                           );
                         })()}
                       </TableCell>
