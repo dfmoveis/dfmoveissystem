@@ -300,5 +300,3 @@ function ProjetistaDashboard() {
     </motion.div>
   );
 }
-  );
-}
