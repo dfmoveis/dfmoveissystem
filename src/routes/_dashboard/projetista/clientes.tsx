@@ -170,6 +170,21 @@ function ProjetistaClientesPage() {
     onError: (e: any) => toast.error('Erro ao criar projeto: ' + (e?.message ?? e)),
   });
 
+  const assignProjetista = useMutation({
+    mutationFn: async ({ clienteId, projetistaId }: { clienteId: string; projetistaId: string }) => {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ projetista_id: projetistaId })
+        .eq('id', clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
+      toast.success('Atendimento atualizado!');
+    },
+    onError: (e: any) => toast.error('Erro ao atribuir: ' + (e?.message ?? e)),
+  });
+
   const handleSaveClient = () => {
     console.log('[clientes] handleSaveClient clicked', { clientForm, user });
     if (!clientForm.nome.trim()) {
