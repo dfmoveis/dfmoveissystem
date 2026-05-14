@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Projeto } from '@/types/database';
+import { Projeto, SaleStatus } from '@/types/database';
 
-export function useProjects(filters?: { projetista_id?: string; status_venda?: string }) {
+export function useProjects(filters?: { projetista_id?: string; status_venda?: SaleStatus }) {
   return useQuery({
     queryKey: ['projects', filters],
     queryFn: async () => {
