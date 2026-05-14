@@ -255,6 +255,20 @@ function ProjetistaClientesPage() {
                       {p.status}
                     </span>
                   </TableCell>
+                  <TableCell>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 px-2 text-primary"
+                      onClick={() => {
+                        setSelectedClientId(p.cliente_id);
+                        setIsProjectDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Novo Projeto
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-right font-medium">
                     {p.valor_venda 
                       ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(p.valor_venda))
