@@ -70,7 +70,7 @@ function AgendaPage() {
         data_fim,
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
-        criado_por: user?.id
+        criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
       }]);
       if (error) throw error;
     },
