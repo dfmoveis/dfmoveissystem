@@ -76,14 +76,14 @@ export function DashboardLayout() {
     if (newRole === 'PROJETISTA' && team && team.length > 0) {
       setUser(team[0]);
     } else if (newRole === 'ADMIN' && adminUser) {
-      setUser(adminUser);
+      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
     }
   };
 
   // Auto-corrige sessão admin com id inválido (legado do localStorage).
   React.useEffect(() => {
     if (role === 'ADMIN' && adminUser && user?.id !== adminUser.id) {
-      setUser(adminUser);
+      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
     }
   }, [role, adminUser, user?.id, setUser]);
 
