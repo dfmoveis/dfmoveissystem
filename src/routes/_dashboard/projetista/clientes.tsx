@@ -145,20 +145,23 @@ function ProjetistaClientesPage() {
     mutationFn: async (data: typeof projectForm) => {
       if (!user?.id || !pendingClient) throw new Error('Cliente não selecionado.');
       const today = new Date().toISOString().slice(0, 10);
-      const { error } = await supabase.from('projetos').insert([
-        {
-          cliente_id: pendingClient.id,
-          projetista_id: user.id,
-          status: 'PRONTO',
-          status_venda: 'EM_NEGOCIACAO',
-          data_inicio: today,
-          prazo_termino: data.prazo_termino || today,
-          valor_venda: data.valor_venda ? parseFloat(data.valor_venda) : null,
-          observacoes: data.observacoes || null,
-          fonte: data.fonte || null,
-        },
-      ]);
-      if (error) throw error;
+      const payload = {
+        cliente_id: pendingClient.id,
+        projetista_id: user.id,
+        status: 'PRONTO' as const,
+        status_venda: 'EM_NEGOCIACAO' as const,
+        data_inicio: today,
+        prazo_termino: data.prazo_termino || today,
+        valor_venda: data.valor_venda ? parseFloat(data.valor_venda) : null,
+        observacoes: data.observacoes || null,
+        fonte: data.fonte || null,
+      };
+      console.log('[projetos] inserting', payload);
+      const { error } = await supabase.from('projetos').insert([payload]);
+      if (error) {
+        console.error('[projetos] insert error', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
