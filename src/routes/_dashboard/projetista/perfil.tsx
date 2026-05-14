@@ -27,7 +27,7 @@ function PerfilPage() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ nome })
+        .update({ nome } as any)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -64,7 +64,7 @@ function PerfilPage() {
       // Update user in database
       const { error: updateError } = await supabase
         .from('users')
-        .update({ avatar_url: publicUrl }) // Note: our login logic uses avatar_url for password currently, 
+        .update({ avatar_url: publicUrl } as any) // Note: our login logic uses avatar_url for password currently, 
                                             // BUT in a real app this should be a separate column.
                                             // Given the current state where avatar_url = password, 
                                             // I should probably CHECK the schema or just use a dedicated column if it exists.
