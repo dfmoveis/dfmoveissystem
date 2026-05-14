@@ -56,21 +56,13 @@ function LoginPage() {
   return (
     <div className="h-screen w-full flex items-center justify-center bg-muted/30 p-4 overflow-hidden">
       <div className="w-full max-w-md space-y-4 flex flex-col items-center">
-        <div className="flex flex-col items-center space-y-2 text-center">
+        <div className="flex flex-col items-center text-center">
           <div className="w-64 h-64 flex items-center justify-center">
             <img 
               src={LOGO_URL} 
               alt="DF Móveis" 
               className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten transition-all duration-300"
             />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Sistema Administrativo DF
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Entre com suas credenciais para acessar o painel
-            </p>
           </div>
         </div>
 
@@ -120,9 +112,14 @@ function LoginPage() {
           </form>
         </Card>
         
-        <p className="text-xs text-center text-muted-foreground">
-          &copy; {new Date().getFullYear()} DF Móveis Planejados. Todos os direitos reservados.
-        </p>
+        <div className="text-center space-y-1">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground/80">
+            Sistema Administrativo DF
+          </h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+            &copy; {new Date().getFullYear()} DF Móveis Planejados. Todos os direitos reservados.
+          </p>
+        </div>
       </div>
     </div>
   );
