@@ -21,7 +21,7 @@ export function useTeam() {
   });
 
   const addMember = useMutation({
-    mutationFn: async (newMember: { nome: string; email: string; avatar_url?: string }) => {
+    mutationFn: async (newMember: { nome: string; email: string; password: string }) => {
       const { data, error } = await supabase
         .from('users')
         .insert([{ ...newMember, role: 'PROJETISTA' as const }])
