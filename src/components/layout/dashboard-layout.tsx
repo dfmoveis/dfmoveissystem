@@ -29,7 +29,8 @@ import {
 } from '@/components/ui/sidebar';
 
 export function DashboardLayout() {
-  const { user, role, setRole } = useAuthStore();
+  const { user, role, setRole, setUser } = useAuthStore();
+  const { data: team } = useTeam();
 
   const adminLinks = [
     { title: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
@@ -43,6 +44,21 @@ export function DashboardLayout() {
     { title: 'Clientes', icon: UserSquare2, to: '/projetista/clientes' },
     { title: 'Perfil', icon: UserSquare2, to: '/projetista/perfil' },
   ];
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setRole(newRole);
+    if (newRole === 'PROJETISTA' && team && team.length > 0) {
+      setUser(team[0]);
+    } else if (newRole === 'ADMIN') {
+      setUser({
+        id: '00000000-0000-0000-0000-000000000000',
+        nome: 'Admin Teste',
+        email: 'rangelmaker@gmail.com',
+        role: 'ADMIN',
+        created_at: new Date().toISOString(),
+      });
+    }
+  };
 
   const currentLinks = role === 'ADMIN' ? adminLinks : projetistaLinks;
 
@@ -87,7 +103,7 @@ export function DashboardLayout() {
                 <div className="px-3 py-2">
                   <select 
                     value={role} 
-                    onChange={(e) => setRole(e.target.value as any)}
+                    onChange={(e) => handleRoleChange(e.target.value as any)}
                     className="w-full p-2 text-xs rounded border bg-background"
                   >
                     <option value="ADMIN">Visão ADMIN</option>
