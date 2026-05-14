@@ -75,7 +75,7 @@ export function DashboardLayout() {
             <div className="flex items-center justify-center py-2 md:py-4">
               <div className="w-20 h-20 md:w-32 md:h-32 flex items-center justify-center transition-all duration-300">
                 <img 
-                  src="https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778781933453_njvsxp_Design_sem_nome.png" 
+                  src="https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778783898939_luewqy_8.png" 
                   alt="DF Móveis" 
                   className="w-full h-full object-contain brightness-110 contrast-125 dark:brightness-0 dark:invert transform transition-transform hover:scale-105"
                 />
