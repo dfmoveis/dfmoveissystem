@@ -322,6 +322,7 @@ function AgendaPage() {
               locale={ptBR}
               className="rounded-md w-full"
               modifiers={modifiers}
+              dayTooltips={dayTooltips}
               modifiersClassNames={{
                 VISITA: "bg-green-100 text-green-700 font-bold border-b-2 border-green-500",
                 ATENDIMENTO: "bg-blue-100 text-blue-700 font-bold border-b-2 border-blue-500",
