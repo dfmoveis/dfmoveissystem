@@ -140,7 +140,14 @@ function EquipePage() {
             </Card>
           ))
         ) : team?.map((member) => (
-          <Card key={member.id} className="overflow-hidden group">
+          <Card 
+            key={member.id} 
+            className="overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => {
+              setSelectedMember(member);
+              setIsStatsOpen(true);
+            }}
+          >
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <UserIcon className="h-6 w-6" />
@@ -156,13 +163,14 @@ function EquipePage() {
             <CardContent>
               <div className="flex justify-between items-center mt-2 pt-4 border-t">
                 <div className="text-sm font-medium">
-                  Comissão: <span className="text-primary">5%</span>
+                  Senha: <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{member.avatar_url || 'N/A'}</span>
                 </div>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => {
+                  className="text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (confirm('Tem certeza que deseja remover este projetista?')) {
                       deleteMember.mutate(member.id);
                     }
@@ -175,6 +183,55 @@ function EquipePage() {
           </Card>
         ))}
       </div>
+
+      <Dialog open={isStatsOpen} onOpenChange={setIsStatsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Desempenho: {selectedMember?.nome}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 md:grid-cols-2">
+            <Card className="bg-muted/30 border-none">
+              <CardContent className="pt-6">
+                <div className="text-sm font-medium text-muted-foreground uppercase">Total Vendido</div>
+                <div className="text-2xl font-bold mt-1 text-primary">R$ 45.900,00</div>
+                <div className="text-xs text-muted-foreground mt-1">+8% em relação ao mês anterior</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/30 border-none">
+              <CardContent className="pt-6">
+                <div className="text-sm font-medium text-muted-foreground uppercase">Projetos Ativos</div>
+                <div className="text-2xl font-bold mt-1 text-blue-600">6 Projetos</div>
+                <div className="text-xs text-muted-foreground mt-1">4 em execução, 2 em negociação</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/30 border-none">
+              <CardContent className="pt-6">
+                <div className="text-sm font-medium text-muted-foreground uppercase">Taxa de Conversão</div>
+                <div className="text-2xl font-bold mt-1 text-purple-600">68%</div>
+                <div className="text-xs text-muted-foreground mt-1">Média da equipe: 62%</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/30 border-none">
+              <CardContent className="pt-6">
+                <div className="text-sm font-medium text-muted-foreground uppercase">Informações de Acesso</div>
+                <div className="mt-2 space-y-1">
+                  <div className="text-xs flex justify-between">
+                    <span className="text-muted-foreground">E-mail:</span>
+                    <span className="font-medium">{selectedMember?.email}</span>
+                  </div>
+                  <div className="text-xs flex justify-between">
+                    <span className="text-muted-foreground">Senha Atual:</span>
+                    <span className="font-mono font-bold text-primary">{selectedMember?.avatar_url}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button variant="outline" onClick={() => setIsStatsOpen(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {!isLoading && team?.length === 0 && (
         <div className="text-center py-12 border-2 border-dashed rounded-lg">
