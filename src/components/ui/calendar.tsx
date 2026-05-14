@@ -163,7 +163,7 @@ function CalendarDayButton({
     if (modifiers.focused) ref.current?.focus();
   }, [modifiers.focused]);
 
-  return (
+  const content = (
     <Button
       ref={ref}
       variant="ghost"
@@ -186,6 +186,26 @@ function CalendarDayButton({
       {...props}
     />
   );
+
+  const dayKey = day.date.toISOString().split('T')[0];
+  const tooltipContent = dayTooltips?.[dayKey];
+
+  if (tooltipContent) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {content}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[200px] bg-popover text-popover-foreground border shadow-lg p-2">
+            {tooltipContent}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return content;
 }
 
 export { Calendar, CalendarDayButton };
