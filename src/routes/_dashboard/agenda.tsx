@@ -139,19 +139,14 @@ function AgendaPage() {
     mutationFn: async (event: any) => {
       if (!event.titulo?.trim()) throw new Error('Informe o título do compromisso.');
       if (!event.data) throw new Error('Selecione a data.');
-      if (!event.hora_inicio || !event.hora_fim) throw new Error('Informe os horários de início e fim.');
+      if (!event.hora_inicio) throw new Error('Informe o horário de início.');
       if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
 
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
-      const data_fim = new Date(`${event.data}T${event.hora_fim}`);
-
-      if (isNaN(data_inicio.getTime()) || isNaN(data_fim.getTime())) {
+      if (isNaN(data_inicio.getTime())) {
         throw new Error('Data ou hora inválida.');
       }
-
-      if (data_fim <= data_inicio) {
-        throw new Error('A hora de término deve ser após a hora de início.');
-      }
+      const data_fim = new Date(data_inicio.getTime() + 60 * 60 * 1000);
 
       // Check for overlaps in the same team (or just globally for simplicity as per request)
       const hasOverlap = events?.some(e => {
