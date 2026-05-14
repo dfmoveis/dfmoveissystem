@@ -196,7 +196,7 @@ function AgendaPage() {
       toast.success(editingEventId ? 'Agendamento atualizado!' : 'Agendamento realizado!');
     },
     onError: (error: any) => {
-      toast.error('Erro ao salvar: ' + error.message);
+      toast.error('Erro ao salvar: ' + (error?.message || error?.details || 'erro desconhecido'));
     }
   });
 
