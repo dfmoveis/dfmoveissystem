@@ -7,11 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import * as React from "react";
 
 import appCss from "../styles.css?url";
 
-function NotFoundComponent() {
-  return (
+// Lazy load components that are not needed immediately
+const NotFoundComponent = React.lazy(() => Promise.resolve({
+  default: () => (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
@@ -29,8 +31,8 @@ function NotFoundComponent() {
         </div>
       </div>
     </div>
-  );
-}
+  )
+}));
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
@@ -89,13 +91,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  notFoundComponent: () => (
+    <React.Suspense fallback={null}>
+      <NotFoundComponent />
+    </React.Suspense>
+  ),
   errorComponent: ErrorComponent,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
