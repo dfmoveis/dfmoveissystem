@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, AlertCircle, DollarSign, TrendingUp, Users, ArrowUpRight } from 'lucide-react';
+import { Briefcase, AlertCircle, DollarSign, TrendingUp, Users, ArrowUpRight, BarChart3 } from 'lucide-react';
 import { useAdminStats } from '@/hooks/use-admin-data';
 import { motion } from 'framer-motion';
 import { 
