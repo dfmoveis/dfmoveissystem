@@ -34,30 +34,23 @@ export const exportToPDF = (commissions: any[], month: string) => {
   const doc = new jsPDF();
   const title = `Relatorio de Comissoes - ${month}`;
   
-  // Create an image element to get base64
   const img = new Image();
   img.crossOrigin = 'Anonymous';
   img.src = LOGO_URL;
   
   img.onload = () => {
-    // Add watermark
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
-    // Set opacity to 30% for watermark
-    doc.setGState(doc.setGState(new (doc as any).GState({ opacity: 0.3 })));
-    
-    // Center watermark
+    // Add watermark on first page
+    doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
     const watermarkWidth = 100;
     const watermarkHeight = 100;
     doc.addImage(img, 'PNG', (pageWidth - watermarkWidth) / 2, (pageHeight - watermarkHeight) / 2, watermarkWidth, watermarkHeight);
-    
-    // Reset opacity for text
     doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
     
-    // Add header logo (smaller)
+    // Header
     doc.addImage(img, 'PNG', 14, 10, 20, 20);
-
     doc.setFontSize(18);
     doc.text('DF Moveis Planejados', 38, 20);
     doc.setFontSize(14);
@@ -81,9 +74,8 @@ export const exportToPDF = (commissions: any[], month: string) => {
       body: tableRows,
       startY: 55,
       theme: 'striped',
-      headStyles: { fillColor: [33, 33, 33] }, // Darker header to match branding
-      didDrawPage: (data) => {
-        // Redraw watermark on each page if needed
+      headStyles: { fillColor: [33, 33, 33] },
+      didDrawPage: (data: any) => {
         if (data.pageNumber > 1) {
           doc.setGState(new (doc as any).GState({ opacity: 0.3 }));
           doc.addImage(img, 'PNG', (pageWidth - watermarkWidth) / 2, (pageHeight - watermarkHeight) / 2, watermarkWidth, watermarkHeight);
@@ -96,8 +88,6 @@ export const exportToPDF = (commissions: any[], month: string) => {
   };
 
   img.onerror = () => {
-    console.error("Failed to load logo for PDF export");
-    // Fallback without logo
     doc.setFontSize(18);
     doc.text('DF Moveis Planejados', 14, 20);
     doc.setFontSize(14);
