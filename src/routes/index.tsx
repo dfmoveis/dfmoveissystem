@@ -112,9 +112,14 @@ function LoginPage() {
           </form>
         </Card>
         
-        <p className="text-xs text-center text-muted-foreground">
-          &copy; {new Date().getFullYear()} DF Móveis Planejados. Todos os direitos reservados.
-        </p>
+        <div className="text-center space-y-1">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground/80">
+            Sistema Administrativo DF
+          </h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+            &copy; {new Date().getFullYear()} DF Móveis Planejados. Todos os direitos reservados.
+          </p>
+        </div>
       </div>
     </div>
   );
