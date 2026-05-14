@@ -105,14 +105,35 @@ function AgendaPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (event: any) => {
-      const data_inicio = new Date(`${event.data}T${event.hora_inicio}`).toISOString();
-      const data_fim = new Date(`${event.data}T${event.hora_fim}`).toISOString();
+      const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
+      const data_fim = new Date(`${event.data}T${event.hora_fim}`);
       
+      if (data_fim <= data_inicio) {
+        throw new Error('A hora de término deve ser após a hora de início.');
+      }
+
+      // Check for overlaps in the same team (or just globally for simplicity as per request)
+      const hasOverlap = events?.some(e => {
+        if (editingEventId && e.id === editingEventId) return false;
+        
+        const eStart = parseISO(e.data_inicio);
+        const eEnd = parseISO(e.data_fim);
+        
+        return areIntervalsOverlapping(
+          { start: data_inicio, end: data_fim },
+          { start: eStart, end: eEnd }
+        );
+      });
+
+      if (hasOverlap) {
+        throw new Error('Já existe um agendamento neste horário. Por favor, escolha outro horário.');
+      }
+
       const payload = {
         titulo: event.titulo,
         descricao: event.descricao,
-        data_inicio,
-        data_fim,
+        data_inicio: data_inicio.toISOString(),
+        data_fim: data_fim.toISOString(),
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
         criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
