@@ -1,0 +1,3 @@
+
+ALTER TABLE public.projetos ADD COLUMN IF NOT EXISTS nome text;
+ALTER TABLE public.agendamentos ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'PENDENTE';

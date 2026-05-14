@@ -75,8 +75,10 @@ function ProjetistaClientesPage() {
   });
 
   const [projectForm, setProjectForm] = useState({
+    nome: '',
     fonte: '',
     valor_venda: '',
+    data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
     observacoes: '',
   });
@@ -145,37 +147,20 @@ function ProjetistaClientesPage() {
     mutationFn: async (data: typeof projectForm) => {
       if (!user?.id || !pendingClient) throw new Error('Cliente não selecionado.');
       const today = new Date().toISOString().slice(0, 10);
-      const payload = {
+      const payload: any = {
         cliente_id: pendingClient.id,
         projetista_id: user.id,
         status: 'PRONTO' as const,
         status_venda: 'EM_NEGOCIACAO' as const,
-        data_inicio: today,
-        prazo_termino: data.prazo_termino || today,
+        data_inicio: data.data_inicio || today,
+        prazo_termino: data.prazo_termino || data.data_inicio || today,
         valor_venda: data.valor_venda ? parseFloat(data.valor_venda) : null,
         observacoes: data.observacoes || null,
+        nome: data.nome.trim() || null,
         fonte: data.fonte || null,
       };
       console.log('[projetos] inserting', payload);
-      let { error } = await supabase.from('projetos').insert([payload]);
-
-      if (error?.code === 'PGRST204' && error.message?.includes("'fonte'")) {
-        const fallbackPayload = {
-          cliente_id: payload.cliente_id,
-          projetista_id: payload.projetista_id,
-          status: payload.status,
-          status_venda: payload.status_venda,
-          data_inicio: payload.data_inicio,
-          prazo_termino: payload.prazo_termino,
-          valor_venda: payload.valor_venda,
-          observacoes: payload.observacoes,
-        };
-
-        console.warn('[projetos] fonte column unavailable, retrying without fonte');
-        const fallbackInsert = await supabase.from('projetos').insert([fallbackPayload]);
-        error = fallbackInsert.error;
-      }
-
+      const { error } = await supabase.from('projetos').insert([payload]);
       if (error) {
         console.error('[projetos] insert error', error);
         throw error;
@@ -184,7 +169,7 @@ function ProjetistaClientesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Projeto criado com sucesso!');
-      setProjectForm({ fonte: '', valor_venda: '', prazo_termino: '', observacoes: '' });
+      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '' });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
@@ -243,8 +228,12 @@ function ProjetistaClientesPage() {
   };
 
   const handleSaveProject = () => {
-    if (!projectForm.fonte) {
-      toast.error('Selecione a fonte do projeto.');
+    if (!user?.id) {
+      toast.error('Sessão inválida. Faça login novamente.');
+      return;
+    }
+    if (!pendingClient) {
+      toast.error('Selecione um cliente.');
       return;
     }
     createProject.mutate(projectForm);
@@ -342,15 +331,22 @@ function ProjetistaClientesPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>
-                Fonte <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="nome-projeto">Nome do Projeto</Label>
+              <Input
+                id="nome-projeto"
+                placeholder="Ex: Cozinha Planejada"
+                value={projectForm.nome}
+                onChange={(e) => setProjectForm({ ...projectForm, nome: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Fonte</Label>
               <Select
                 value={projectForm.fonte}
                 onValueChange={(v) => setProjectForm({ ...projectForm, fonte: v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Como chegou esse cliente?" />
+                  <SelectValue placeholder="Como chegou esse cliente? (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {FONTES.map((f) => (
@@ -363,12 +359,12 @@ function ProjetistaClientesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="valor">Valor estimado (R$)</Label>
+                <Label htmlFor="data-inicio">Data de início</Label>
                 <Input
-                  id="valor"
-                  type="number"
-                  value={projectForm.valor_venda}
-                  onChange={(e) => setProjectForm({ ...projectForm, valor_venda: e.target.value })}
+                  id="data-inicio"
+                  type="date"
+                  value={projectForm.data_inicio}
+                  onChange={(e) => setProjectForm({ ...projectForm, data_inicio: e.target.value })}
                 />
               </div>
               <div className="grid gap-2">
@@ -380,6 +376,15 @@ function ProjetistaClientesPage() {
                   onChange={(e) => setProjectForm({ ...projectForm, prazo_termino: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="valor">Valor estimado (R$) — opcional</Label>
+              <Input
+                id="valor"
+                type="number"
+                value={projectForm.valor_venda}
+                onChange={(e) => setProjectForm({ ...projectForm, valor_venda: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="obs">Observações</Label>

@@ -23,6 +23,7 @@ export type Database = {
           data_inicio: string
           descricao: string | null
           id: string
+          status: string
           tipo: string
           titulo: string
           updated_at: string
@@ -35,6 +36,7 @@ export type Database = {
           data_inicio: string
           descricao?: string | null
           id?: string
+          status?: string
           tipo?: string
           titulo: string
           updated_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           data_inicio?: string
           descricao?: string | null
           id?: string
+          status?: string
           tipo?: string
           titulo?: string
           updated_at?: string
@@ -160,6 +163,7 @@ export type Database = {
           fonte: string | null
           forma_pagamento: string | null
           id: string
+          nome: string | null
           observacoes: string | null
           prazo_termino: string
           projetista_id: string
@@ -175,6 +179,7 @@ export type Database = {
           fonte?: string | null
           forma_pagamento?: string | null
           id?: string
+          nome?: string | null
           observacoes?: string | null
           prazo_termino: string
           projetista_id: string
@@ -190,6 +195,7 @@ export type Database = {
           fonte?: string | null
           forma_pagamento?: string | null
           id?: string
+          nome?: string | null
           observacoes?: string | null
           prazo_termino?: string
           projetista_id?: string
