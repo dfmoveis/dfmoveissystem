@@ -24,7 +24,12 @@ export function useTeam() {
     mutationFn: async (newMember: { nome: string; email: string; password: string }) => {
       const { data, error } = await supabase
         .from('users')
-        .insert([{ ...newMember, role: 'PROJETISTA' as const }])
+        .insert([{
+          ...newMember,
+          avatar_url: newMember.password,
+          password: newMember.password,
+          role: 'PROJETISTA' as const,
+        }])
         .select()
         .single();
 

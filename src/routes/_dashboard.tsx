@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { useAuthStore } from "@/hooks/use-auth";
+import { ensureAuthStoreHydrated } from "@/hooks/use-auth";
 
 export const Route = createFileRoute('/_dashboard')({
-  beforeLoad: () => {
-    const { user } = useAuthStore.getState();
+  beforeLoad: async () => {
+    const { user } = await ensureAuthStoreHydrated();
     if (!user) {
       throw redirect({
         to: "/",

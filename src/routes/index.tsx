@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAuthStore } from "@/hooks/use-auth";
+import { ensureAuthStoreHydrated, useAuthStore } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    const { user, role } = useAuthStore.getState();
+  beforeLoad: async () => {
+    const { user, role } = await ensureAuthStoreHydrated();
     if (user) {
       throw redirect({
         to: role === 'ADMIN' ? "/admin/dashboard" : "/projetista/dashboard",
