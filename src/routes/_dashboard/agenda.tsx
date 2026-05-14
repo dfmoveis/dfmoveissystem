@@ -58,6 +58,9 @@ function AgendaPage() {
     cliente_id: ''
   });
 
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+
   const { data: events, isLoading } = useQuery({
     queryKey: ['agendamentos'],
     queryFn: async () => {
@@ -79,12 +82,27 @@ function AgendaPage() {
     }
   });
 
-  const createEvent = useMutation({
+  const filteredEvents = useMemo(() => {
+    if (!events || !selectedDate) return [];
+    return events.filter(e => isSameDay(parseISO(e.data_inicio), selectedDate));
+  }, [events, selectedDate]);
+
+  const modifiers = useMemo(() => {
+    const mods: Record<string, Date[]> = { REUNIAO: [], ATENDIMENTO: [], VISITA: [] };
+    events?.forEach(e => {
+      if (mods[e.tipo]) {
+        mods[e.tipo].push(parseISO(e.data_inicio));
+      }
+    });
+    return mods;
+  }, [events]);
+
+  const saveMutation = useMutation({
     mutationFn: async (event: any) => {
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`).toISOString();
       const data_fim = new Date(`${event.data}T${event.hora_fim}`).toISOString();
       
-      const { error } = await supabase.from('agendamentos').insert([{
+      const payload = {
         titulo: event.titulo,
         descricao: event.descricao,
         data_inicio,
@@ -92,19 +110,63 @@ function AgendaPage() {
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
         criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
-      }]);
-      if (error) throw error;
+      };
+
+      if (editingEventId) {
+        const { error } = await supabase.from('agendamentos').update(payload).eq('id', editingEventId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('agendamentos').insert([payload]);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       setIsDialogOpen(false);
+      setEditingEventId(null);
       setFormData({ titulo: '', descricao: '', data: '', hora_inicio: '', hora_fim: '', tipo: 'REUNIAO', cliente_id: '' });
-      toast.success('Agendamento realizado com sucesso!');
+      toast.success(editingEventId ? 'Agendamento atualizado!' : 'Agendamento realizado!');
     },
     onError: (error: any) => {
-      toast.error('Erro ao agendar: ' + error.message);
+      toast.error('Erro ao salvar: ' + error.message);
     }
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('agendamentos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      toast.success('Agendamento cancelado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao cancelar: ' + error.message);
+    }
+  });
+
+  const handleEdit = (event: any) => {
+    const start = parseISO(event.data_inicio);
+    const end = parseISO(event.data_fim);
+    setFormData({
+      titulo: event.titulo,
+      descricao: event.descricao || '',
+      data: format(start, 'yyyy-MM-dd'),
+      hora_inicio: format(start, 'HH:mm'),
+      hora_fim: format(end, 'HH:mm'),
+      tipo: event.tipo,
+      cliente_id: event.cliente_id || ''
+    });
+    setEditingEventId(event.id);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Deseja realmente cancelar este agendamento?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   return (
     <div className="space-y-6">
