@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserPlus, Star, Plus } from 'lucide-react';
+import { UserPlus, Star, Plus, Hand, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
