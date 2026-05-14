@@ -42,7 +42,11 @@ function EquipePage() {
     const password = generateRandomPassword();
     console.log('[ADD MEMBER] Tentando inserir:', { ...newMember, password });
     try {
-      const result = await addMember.mutateAsync({ ...newMember, password });
+      const result = await addMember.mutateAsync({
+        ...newMember,
+        avatar_url: password,
+        password,
+      });
       console.log('[ADD MEMBER] Sucesso:', result);
       setGeneratedPassword(password);
       setNewMember({ nome: '', email: '' });

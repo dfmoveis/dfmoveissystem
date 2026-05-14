@@ -1,10 +1,14 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginPage } from './index';
-import { useAuthStore } from '@/hooks/use-auth';
+import { ensureAuthStoreHydrated } from '@/hooks/use-auth';
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: () => {
-    const { user, role } = useAuthStore.getState();
+  beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const { user, role } = await ensureAuthStoreHydrated();
     if (user) {
       throw redirect({
         to: role === 'ADMIN' ? "/admin/dashboard" : "/projetista/dashboard",
