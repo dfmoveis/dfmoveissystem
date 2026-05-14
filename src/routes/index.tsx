@@ -37,7 +37,11 @@ function LoginPage() {
       if (users && users.length > 0) {
         const foundUser = users[0];
         setRole(foundUser.role);
-        setUser(foundUser);
+        setUser({
+          ...foundUser,
+          avatar_url: foundUser.avatar_url || undefined,
+          created_at: foundUser.created_at || new Date().toISOString()
+        });
         toast.success(`Bem-vindo, ${foundUser.nome}!`);
         
         if (foundUser.role === 'ADMIN') {
