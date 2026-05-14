@@ -137,9 +137,18 @@ function AgendaPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (event: any) => {
+      if (!event.titulo?.trim()) throw new Error('Informe o título do compromisso.');
+      if (!event.data) throw new Error('Selecione a data.');
+      if (!event.hora_inicio || !event.hora_fim) throw new Error('Informe os horários de início e fim.');
+      if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
+
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
       const data_fim = new Date(`${event.data}T${event.hora_fim}`);
-      
+
+      if (isNaN(data_inicio.getTime()) || isNaN(data_fim.getTime())) {
+        throw new Error('Data ou hora inválida.');
+      }
+
       if (data_fim <= data_inicio) {
         throw new Error('A hora de término deve ser após a hora de início.');
       }
@@ -168,15 +177,15 @@ function AgendaPage() {
         data_fim: data_fim.toISOString(),
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
-        criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
+        criado_por: user.id,
       };
 
       if (editingEventId) {
         const { error } = await supabase.from('agendamentos').update(payload).eq('id', editingEventId);
-        if (error) throw error;
+        if (error) { console.error('[agenda] update error', error); throw error; }
       } else {
         const { error } = await supabase.from('agendamentos').insert([payload]);
-        if (error) throw error;
+        if (error) { console.error('[agenda] insert error', error); throw error; }
       }
     },
     onSuccess: () => {
@@ -187,7 +196,7 @@ function AgendaPage() {
       toast.success(editingEventId ? 'Agendamento atualizado!' : 'Agendamento realizado!');
     },
     onError: (error: any) => {
-      toast.error('Erro ao salvar: ' + error.message);
+      toast.error('Erro ao salvar: ' + (error?.message || error?.details || 'erro desconhecido'));
     }
   });
 
