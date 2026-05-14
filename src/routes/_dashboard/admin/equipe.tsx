@@ -21,6 +21,8 @@ export const Route = createFileRoute('/_dashboard/admin/equipe')({
 function EquipePage() {
   const { data: team, isLoading, addMember, deleteMember } = useTeam();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [newMember, setNewMember] = useState({ nome: '', email: '' });
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [copied, setCopied] = useState(false);
