@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -53,6 +53,28 @@ export function LoginPage() {
 
       if (users && users.length > 0) {
         const foundUser = users[0];
+
+        if (foundUser.role !== 'ADMIN') {
+          if (foundUser.status === 'PENDENTE') {
+            const msg = "Sua conta está aguardando aprovação do Administrador.";
+            setErrorMessage(msg);
+            toast.error(msg);
+            return;
+          }
+          if (foundUser.status === 'BLOQUEADO') {
+            const msg = "Seu acesso foi bloqueado. Contate o Administrador.";
+            setErrorMessage(msg);
+            toast.error(msg);
+            return;
+          }
+          if (foundUser.status !== 'ATIVO') {
+            const msg = "Sua conta não está ativa. Contate o Administrador.";
+            setErrorMessage(msg);
+            toast.error(msg);
+            return;
+          }
+        }
+
         setRole(foundUser.role);
         setUser({
           ...foundUser,
@@ -148,10 +170,13 @@ export function LoginPage() {
                 </Alert>
               )}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Entrando..." : "Acessar Sistema"}
               </Button>
+              <Link to="/cadastro" className="text-sm text-muted-foreground hover:text-foreground">
+                Ainda não tem conta? Cadastre-se
+              </Link>
             </CardFooter>
           </form>
         </Card>
