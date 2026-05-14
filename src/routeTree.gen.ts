@@ -9,38 +9,144 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
+import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
+import { Route as DashboardProjetistaClientesRouteImport } from './routes/_dashboard/projetista/clientes'
+import { Route as DashboardAdminEquipeRouteImport } from './routes/_dashboard/admin/equipe'
+import { Route as DashboardAdminDashboardRouteImport } from './routes/_dashboard/admin/dashboard'
+import { Route as DashboardAdminCrmRouteImport } from './routes/_dashboard/admin/crm'
+import { Route as DashboardAdminComissoesRouteImport } from './routes/_dashboard/admin/comissoes'
 
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/_dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardProjetistaPerfilRoute =
+  DashboardProjetistaPerfilRouteImport.update({
+    id: '/projetista/perfil',
+    path: '/projetista/perfil',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardProjetistaDashboardRoute =
+  DashboardProjetistaDashboardRouteImport.update({
+    id: '/projetista/dashboard',
+    path: '/projetista/dashboard',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardProjetistaClientesRoute =
+  DashboardProjetistaClientesRouteImport.update({
+    id: '/projetista/clientes',
+    path: '/projetista/clientes',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardAdminEquipeRoute = DashboardAdminEquipeRouteImport.update({
+  id: '/admin/equipe',
+  path: '/admin/equipe',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminDashboardRoute = DashboardAdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminCrmRoute = DashboardAdminCrmRouteImport.update({
+  id: '/admin/crm',
+  path: '/admin/crm',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
+  id: '/admin/comissoes',
+  path: '/admin/comissoes',
+  getParentRoute: () => DashboardRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/comissoes': typeof DashboardAdminComissoesRoute
+  '/admin/crm': typeof DashboardAdminCrmRoute
+  '/admin/dashboard': typeof DashboardAdminDashboardRoute
+  '/admin/equipe': typeof DashboardAdminEquipeRoute
+  '/projetista/clientes': typeof DashboardProjetistaClientesRoute
+  '/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/comissoes': typeof DashboardAdminComissoesRoute
+  '/admin/crm': typeof DashboardAdminCrmRoute
+  '/admin/dashboard': typeof DashboardAdminDashboardRoute
+  '/admin/equipe': typeof DashboardAdminEquipeRoute
+  '/projetista/clientes': typeof DashboardProjetistaClientesRoute
+  '/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_dashboard': typeof DashboardRouteWithChildren
+  '/_dashboard/admin/comissoes': typeof DashboardAdminComissoesRoute
+  '/_dashboard/admin/crm': typeof DashboardAdminCrmRoute
+  '/_dashboard/admin/dashboard': typeof DashboardAdminDashboardRoute
+  '/_dashboard/admin/equipe': typeof DashboardAdminEquipeRoute
+  '/_dashboard/projetista/clientes': typeof DashboardProjetistaClientesRoute
+  '/_dashboard/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/_dashboard/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin/comissoes'
+    | '/admin/crm'
+    | '/admin/dashboard'
+    | '/admin/equipe'
+    | '/projetista/clientes'
+    | '/projetista/dashboard'
+    | '/projetista/perfil'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin/comissoes'
+    | '/admin/crm'
+    | '/admin/dashboard'
+    | '/admin/equipe'
+    | '/projetista/clientes'
+    | '/projetista/dashboard'
+    | '/projetista/perfil'
+  id:
+    | '__root__'
+    | '/'
+    | '/_dashboard'
+    | '/_dashboard/admin/comissoes'
+    | '/_dashboard/admin/crm'
+    | '/_dashboard/admin/dashboard'
+    | '/_dashboard/admin/equipe'
+    | '/_dashboard/projetista/clientes'
+    | '/_dashboard/projetista/dashboard'
+    | '/_dashboard/projetista/perfil'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_dashboard': {
+      id: '/_dashboard'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +154,85 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_dashboard/projetista/perfil': {
+      id: '/_dashboard/projetista/perfil'
+      path: '/projetista/perfil'
+      fullPath: '/projetista/perfil'
+      preLoaderRoute: typeof DashboardProjetistaPerfilRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/dashboard': {
+      id: '/_dashboard/projetista/dashboard'
+      path: '/projetista/dashboard'
+      fullPath: '/projetista/dashboard'
+      preLoaderRoute: typeof DashboardProjetistaDashboardRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/clientes': {
+      id: '/_dashboard/projetista/clientes'
+      path: '/projetista/clientes'
+      fullPath: '/projetista/clientes'
+      preLoaderRoute: typeof DashboardProjetistaClientesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/admin/equipe': {
+      id: '/_dashboard/admin/equipe'
+      path: '/admin/equipe'
+      fullPath: '/admin/equipe'
+      preLoaderRoute: typeof DashboardAdminEquipeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/admin/dashboard': {
+      id: '/_dashboard/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof DashboardAdminDashboardRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/admin/crm': {
+      id: '/_dashboard/admin/crm'
+      path: '/admin/crm'
+      fullPath: '/admin/crm'
+      preLoaderRoute: typeof DashboardAdminCrmRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/admin/comissoes': {
+      id: '/_dashboard/admin/comissoes'
+      path: '/admin/comissoes'
+      fullPath: '/admin/comissoes'
+      preLoaderRoute: typeof DashboardAdminComissoesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardAdminComissoesRoute: typeof DashboardAdminComissoesRoute
+  DashboardAdminCrmRoute: typeof DashboardAdminCrmRoute
+  DashboardAdminDashboardRoute: typeof DashboardAdminDashboardRoute
+  DashboardAdminEquipeRoute: typeof DashboardAdminEquipeRoute
+  DashboardProjetistaClientesRoute: typeof DashboardProjetistaClientesRoute
+  DashboardProjetistaDashboardRoute: typeof DashboardProjetistaDashboardRoute
+  DashboardProjetistaPerfilRoute: typeof DashboardProjetistaPerfilRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminComissoesRoute: DashboardAdminComissoesRoute,
+  DashboardAdminCrmRoute: DashboardAdminCrmRoute,
+  DashboardAdminDashboardRoute: DashboardAdminDashboardRoute,
+  DashboardAdminEquipeRoute: DashboardAdminEquipeRoute,
+  DashboardProjetistaClientesRoute: DashboardProjetistaClientesRoute,
+  DashboardProjetistaDashboardRoute: DashboardProjetistaDashboardRoute,
+  DashboardProjetistaPerfilRoute: DashboardProjetistaPerfilRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
