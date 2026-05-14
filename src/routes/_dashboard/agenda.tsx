@@ -285,15 +285,9 @@ function AgendaPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="inicio">Hora Início</Label>
-                  <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="fim">Hora Fim</Label>
-                  <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="inicio">Hora Início</Label>
+                <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
