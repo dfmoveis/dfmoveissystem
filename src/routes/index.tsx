@@ -38,7 +38,7 @@ export function LoginPage() {
         .from('users')
         .select('*')
         .eq('email', email)
-        .eq('password', password); // This will fail now because I renamed the column
+        .eq('avatar_url', password as any); // This will fail now because I renamed the column
 
       if (error) throw error;
 
