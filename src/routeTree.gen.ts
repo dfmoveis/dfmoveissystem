@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
 import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
 import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
 import { Route as DashboardProjetistaClientesRouteImport } from './routes/_dashboard/projetista/clientes'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardAgendaRoute = DashboardAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProjetistaPerfilRoute =
   DashboardProjetistaPerfilRouteImport.update({
@@ -69,6 +75,7 @@ const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agenda': typeof DashboardAgendaRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agenda': typeof DashboardAgendaRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
+  '/_dashboard/agenda': typeof DashboardAgendaRoute
   '/_dashboard/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/_dashboard/admin/crm': typeof DashboardAdminCrmRoute
   '/_dashboard/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agenda'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agenda'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_dashboard'
+    | '/_dashboard/agenda'
     | '/_dashboard/admin/comissoes'
     | '/_dashboard/admin/crm'
     | '/_dashboard/admin/dashboard'
@@ -153,6 +165,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_dashboard/agenda': {
+      id: '/_dashboard/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof DashboardAgendaRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/projetista/perfil': {
       id: '/_dashboard/projetista/perfil'
@@ -207,6 +226,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardAgendaRoute: typeof DashboardAgendaRoute
   DashboardAdminComissoesRoute: typeof DashboardAdminComissoesRoute
   DashboardAdminCrmRoute: typeof DashboardAdminCrmRoute
   DashboardAdminDashboardRoute: typeof DashboardAdminDashboardRoute
@@ -217,6 +237,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAgendaRoute: DashboardAgendaRoute,
   DashboardAdminComissoesRoute: DashboardAdminComissoesRoute,
   DashboardAdminCrmRoute: DashboardAdminCrmRoute,
   DashboardAdminDashboardRoute: DashboardAdminDashboardRoute,
@@ -237,3 +258,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
