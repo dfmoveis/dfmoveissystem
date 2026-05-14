@@ -40,9 +40,15 @@ function EquipePage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const password = generateRandomPassword();
-    await addMember.mutateAsync({ ...newMember, password }); 
-    setGeneratedPassword(password);
-    setNewMember({ nome: '', email: '' });
+    console.log('[ADD MEMBER] Tentando inserir:', { ...newMember, password });
+    try {
+      const result = await addMember.mutateAsync({ ...newMember, password });
+      console.log('[ADD MEMBER] Sucesso:', result);
+      setGeneratedPassword(password);
+      setNewMember({ nome: '', email: '' });
+    } catch (err) {
+      console.error('[ADD MEMBER] Erro:', err);
+    }
   };
 
   const handleShowStats = async (member: any) => {
