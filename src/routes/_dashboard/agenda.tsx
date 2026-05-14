@@ -93,6 +93,38 @@ function AgendaPage() {
     return events.filter(e => isSameDay(parseISO(e.data_inicio), selectedDate));
   }, [events, selectedDate]);
 
+  const dayTooltips = useMemo(() => {
+    const tooltips: Record<string, React.ReactNode> = {};
+    if (!events) return tooltips;
+
+    const grouped = events.reduce((acc: any, event) => {
+      const dateKey = event.data_inicio.split('T')[0];
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(event);
+      return acc;
+    }, {});
+
+    Object.keys(grouped).forEach(dateKey => {
+      tooltips[dateKey] = (
+        <div className="space-y-2">
+          {grouped[dateKey].slice(0, 3).map((e: any) => (
+            <div key={e.id} className="text-[10px] border-b border-border last:border-0 pb-1">
+              <p className="font-bold truncate">{e.titulo}</p>
+              <p className="text-muted-foreground">
+                {format(parseISO(e.data_inicio), "HH:mm")} - {e.cliente?.nome || 'Sem cliente'}
+              </p>
+            </div>
+          ))}
+          {grouped[dateKey].length > 3 && (
+            <p className="text-[9px] text-center font-bold">+ {grouped[dateKey].length - 3} compromissos</p>
+          )}
+        </div>
+      );
+    });
+
+    return tooltips;
+  }, [events]);
+
   const modifiers = useMemo(() => {
     const mods: Record<string, Date[]> = { REUNIAO: [], ATENDIMENTO: [], VISITA: [] };
     events?.forEach(e => {
