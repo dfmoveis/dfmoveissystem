@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/hooks/use-auth';
+import { useTeam } from '@/hooks/use-team';
+import { UserRole } from '@/types/database';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
