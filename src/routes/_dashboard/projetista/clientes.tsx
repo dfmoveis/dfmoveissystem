@@ -126,6 +126,45 @@ function ProjetistaClientesPage() {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Novo Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="nome">Nome Completo</Label>
+                  <Input id="nome" value={clientForm.nome} onChange={(e) => setClientForm({...clientForm, nome: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={clientForm.email} onChange={(e) => setClientForm({...clientForm, email: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="tel">Telefone</Label>
+                    <Input id="tel" value={clientForm.telefone} onChange={(e) => setClientForm({...clientForm, telefone: e.target.value})} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="end">Endereço</Label>
+                  <Input id="end" value={clientForm.endereco} onChange={(e) => setClientForm({...clientForm, endereco: e.target.value})} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => createClient.mutate(clientForm)} disabled={createClient.isPending}>
+                  Salvar Cliente
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Select value={statusVenda} onValueChange={setStatusVenda}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status de Venda" />
@@ -139,6 +178,33 @@ function ProjetistaClientesPage() {
           </Select>
         </div>
       </div>
+
+      <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Projeto para o Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="valor">Valor Estimado (R$)</Label>
+              <Input id="valor" type="number" value={projectForm.valor_venda} onChange={(e) => setProjectForm({...projectForm, valor_venda: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="prazo">Prazo de Término</Label>
+              <Input id="prazo" type="date" value={projectForm.prazo_termino} onChange={(e) => setProjectForm({...projectForm, prazo_termino: e.target.value})} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="obs">Observações / Pasta de Arquivos</Label>
+              <Input id="obs" placeholder="Ex: Link do Google Drive ou observações do projeto" value={projectForm.observacoes} onChange={(e) => setProjectForm({...projectForm, observacoes: e.target.value})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => createProject.mutate(projectForm)} disabled={createProject.isPending}>
+              Criar Projeto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
