@@ -73,8 +73,12 @@ export function DashboardLayout() {
         <Sidebar className="border-r border-border">
           <SidebarHeader className="p-4 border-b border-border">
             <div className="flex items-center gap-2 px-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                DF
+              <div className="w-10 h-10 overflow-hidden flex items-center justify-center">
+                <img 
+                  src="https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778781933453_njvsxp_Design_sem_nome.png" 
+                  alt="DF Móveis" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="font-bold text-lg tracking-tight">DF Móveis</span>
             </div>
