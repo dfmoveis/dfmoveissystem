@@ -40,7 +40,7 @@ function EquipePage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const password = generateRandomPassword();
-    await addMember.mutateAsync({ ...newMember, avatar_url: password }); 
+    await addMember.mutateAsync({ ...newMember, password }); 
     setGeneratedPassword(password);
     setNewMember({ nome: '', email: '' });
   };
@@ -200,7 +200,7 @@ function EquipePage() {
             <CardContent>
               <div className="flex justify-between items-center mt-2 pt-4 border-t">
                 <div className="text-sm font-medium">
-                  Senha: <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{member.avatar_url || 'N/A'}</span>
+                  Senha: <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{(member as any).password || 'N/A'}</span>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -266,7 +266,7 @@ function EquipePage() {
                     </div>
                     <div className="text-xs flex justify-between">
                       <span className="text-muted-foreground">Senha Atual:</span>
-                      <span className="font-mono font-bold text-primary">{selectedMember?.avatar_url}</span>
+                      <span className="font-mono font-bold text-primary">{selectedMember?.password}</span>
                     </div>
                   </div>
                 </CardContent>
