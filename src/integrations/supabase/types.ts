@@ -75,6 +75,7 @@ export type Database = {
           endereco: string | null
           id: string
           nome: string
+          projetista_id: string | null
           telefone: string | null
         }
         Insert: {
@@ -83,6 +84,7 @@ export type Database = {
           endereco?: string | null
           id?: string
           nome: string
+          projetista_id?: string | null
           telefone?: string | null
         }
         Update: {
@@ -91,9 +93,18 @@ export type Database = {
           endereco?: string | null
           id?: string
           nome?: string
+          projetista_id?: string | null
           telefone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clientes_projetista_id_fkey"
+            columns: ["projetista_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comissoes: {
         Row: {
