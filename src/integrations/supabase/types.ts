@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          criado_por: string
+          data_fim: string
+          data_inicio: string
+          descricao: string | null
+          id: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          criado_por: string
+          data_fim: string
+          data_inicio: string
+          descricao?: string | null
+          id?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          criado_por?: string
+          data_fim?: string
+          data_inicio?: string
+          descricao?: string | null
+          id?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           created_at: string | null
@@ -88,11 +142,13 @@ export type Database = {
       }
       projetos: {
         Row: {
+          arquivo_url: string | null
           cliente_id: string
           created_at: string | null
           data_inicio: string
           forma_pagamento: string | null
           id: string
+          observacoes: string | null
           prazo_termino: string
           projetista_id: string
           status: Database["public"]["Enums"]["project_status"]
@@ -100,11 +156,13 @@ export type Database = {
           valor_venda: number | null
         }
         Insert: {
+          arquivo_url?: string | null
           cliente_id: string
           created_at?: string | null
           data_inicio: string
           forma_pagamento?: string | null
           id?: string
+          observacoes?: string | null
           prazo_termino: string
           projetista_id: string
           status?: Database["public"]["Enums"]["project_status"]
@@ -112,11 +170,13 @@ export type Database = {
           valor_venda?: number | null
         }
         Update: {
+          arquivo_url?: string | null
           cliente_id?: string
           created_at?: string | null
           data_inicio?: string
           forma_pagamento?: string | null
           id?: string
+          observacoes?: string | null
           prazo_termino?: string
           projetista_id?: string
           status?: Database["public"]["Enums"]["project_status"]
