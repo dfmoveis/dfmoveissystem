@@ -37,6 +37,10 @@ export const useAuthStore = create<AuthState>()(
 );
 
 export async function ensureAuthStoreHydrated() {
+  if (typeof window === 'undefined') {
+    return useAuthStore.getState();
+  }
+
   if (!useAuthStore.persist.hasHydrated()) {
     await useAuthStore.persist.rehydrate();
   }
