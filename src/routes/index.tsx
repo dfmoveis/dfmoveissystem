@@ -170,10 +170,13 @@ export function LoginPage() {
                 </Alert>
               )}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-3">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Entrando..." : "Acessar Sistema"}
               </Button>
+              <Link to="/cadastro" className="text-sm text-muted-foreground hover:text-foreground">
+                Ainda não tem conta? Cadastre-se
+              </Link>
             </CardFooter>
           </form>
         </Card>
