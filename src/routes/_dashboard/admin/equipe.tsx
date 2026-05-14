@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTeam } from '@/hooks/use-team';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Mail, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Mail, User as UserIcon, Key, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 import {
   Dialog,
