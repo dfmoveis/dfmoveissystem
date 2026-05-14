@@ -16,6 +16,7 @@ import { useAuthStore } from '@/hooks/use-auth';
 import { useTeam } from '@/hooks/use-team';
 import { UserRole } from '@/types/database';
 import { cn } from '@/lib/utils';
+import logoDF from '@/assets/logo-df.png';
 import {
   Sidebar,
   SidebarContent,
@@ -72,16 +73,12 @@ export function DashboardLayout() {
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background">
         <Sidebar className="border-r border-border">
-          <SidebarHeader className="p-2 md:p-4 border-b border-border overflow-hidden">
-            <div className="flex items-center justify-center py-2 md:py-4">
-              <div className="w-20 h-20 md:w-32 md:h-32 flex items-center justify-center transition-all duration-300">
-                <img 
-                  src="https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778783898939_luewqy_8.png" 
-                  alt="DF Móveis" 
-                  className="w-full h-full object-contain brightness-110 contrast-125 dark:brightness-0 dark:invert transform transition-transform hover:scale-105"
-                />
-              </div>
-            </div>
+          <SidebarHeader className="p-0 border-b border-border overflow-hidden">
+            <img
+              src={logoDF}
+              alt="DF Móveis"
+              className="block w-full h-auto object-contain dark:brightness-0 dark:invert transition-transform hover:scale-105"
+            />
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
