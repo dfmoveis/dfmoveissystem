@@ -84,8 +84,8 @@ function ProjetistaClientesPage() {
   const createProject = useMutation({
     mutationFn: async (data: any) => {
       const { error } = await supabase.from('projetos').insert([{
-        cliente_id: selectedClientId,
-        projetista_id: user?.id,
+        cliente_id: selectedClientId!,
+        projetista_id: user?.id!,
         status: data.status,
         data_inicio: new Date().toISOString(),
         prazo_termino: new Date(data.prazo_termino).toISOString(),
