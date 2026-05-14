@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useTeam } from '@/hooks/use-team';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Mail, User as UserIcon, Key, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Mail, User as UserIcon, Key, Copy, Check, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import {
   Dialog,
@@ -26,6 +27,10 @@ function EquipePage() {
   const [newMember, setNewMember] = useState({ nome: '', email: '' });
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [copied, setCopied] = useState(false);
+  
+  // States for stats
+  const [memberStats, setMemberStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   const generateRandomPassword = () => {
     const numbers = Math.floor(1000 + Math.random() * 9000);
@@ -35,9 +40,44 @@ function EquipePage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const password = generateRandomPassword();
-    await addMember.mutateAsync({ ...newMember, avatar_url: password }); // Using avatar_url to store temp password in mock
+    await addMember.mutateAsync({ ...newMember, avatar_url: password }); 
     setGeneratedPassword(password);
     setNewMember({ nome: '', email: '' });
+  };
+
+  const handleShowStats = async (member: any) => {
+    setSelectedMember(member);
+    setIsStatsOpen(true);
+    setLoadingStats(true);
+    
+    try {
+      const { data: projects, error } = await supabase
+        .from('projetos')
+        .select('*')
+        .eq('projetista_id', member.id);
+      
+      if (error) throw error;
+      
+      const totalVendido = projects
+        .filter(p => p.status_venda === 'VENDEU')
+        .reduce((acc, p) => acc + (Number(p.valor_venda) || 0), 0);
+      
+      const projetosAtivos = projects.filter(p => p.status === 'EM_EXECUCAO').length;
+      const totalLeads = projects.length;
+      const totalVendasCount = projects.filter(p => p.status_venda === 'VENDEU').length;
+      const taxaConversao = totalLeads > 0 ? (totalVendasCount / totalLeads) * 100 : 0;
+      
+      setMemberStats({
+        totalVendido,
+        projetosAtivos,
+        totalLeads,
+        taxaConversao
+      });
+    } catch (error) {
+      console.error("Erro ao carregar stats do projetista:", error);
+    } finally {
+      setLoadingStats(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -143,10 +183,7 @@ function EquipePage() {
           <Card 
             key={member.id} 
             className="overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors"
-            onClick={() => {
-              setSelectedMember(member);
-              setIsStatsOpen(true);
-            }}
+            onClick={() => handleShowStats(member)}
           >
             <CardHeader className="flex flex-row items-center gap-4 pb-2">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -189,44 +226,53 @@ function EquipePage() {
           <DialogHeader>
             <DialogTitle>Desempenho: {selectedMember?.nome}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4 md:grid-cols-2">
-            <Card className="bg-muted/30 border-none">
-              <CardContent className="pt-6">
-                <div className="text-sm font-medium text-muted-foreground uppercase">Total Vendido</div>
-                <div className="text-2xl font-bold mt-1 text-primary">R$ 45.900,00</div>
-                <div className="text-xs text-muted-foreground mt-1">+8% em relação ao mês anterior</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-muted/30 border-none">
-              <CardContent className="pt-6">
-                <div className="text-sm font-medium text-muted-foreground uppercase">Projetos Ativos</div>
-                <div className="text-2xl font-bold mt-1 text-blue-600">6 Projetos</div>
-                <div className="text-xs text-muted-foreground mt-1">4 em execução, 2 em negociação</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-muted/30 border-none">
-              <CardContent className="pt-6">
-                <div className="text-sm font-medium text-muted-foreground uppercase">Taxa de Conversão</div>
-                <div className="text-2xl font-bold mt-1 text-purple-600">68%</div>
-                <div className="text-xs text-muted-foreground mt-1">Média da equipe: 62%</div>
-              </CardContent>
-            </Card>
-            <Card className="bg-muted/30 border-none">
-              <CardContent className="pt-6">
-                <div className="text-sm font-medium text-muted-foreground uppercase">Informações de Acesso</div>
-                <div className="mt-2 space-y-1">
-                  <div className="text-xs flex justify-between">
-                    <span className="text-muted-foreground">E-mail:</span>
-                    <span className="font-medium">{selectedMember?.email}</span>
+          {loadingStats ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando desempenho...</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 py-4 md:grid-cols-2">
+              <Card className="bg-muted/30 border-none">
+                <CardContent className="pt-6">
+                  <div className="text-sm font-medium text-muted-foreground uppercase">Total Vendido</div>
+                  <div className="text-2xl font-bold mt-1 text-primary">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(memberStats?.totalVendido || 0)}
                   </div>
-                  <div className="text-xs flex justify-between">
-                    <span className="text-muted-foreground">Senha Atual:</span>
-                    <span className="font-mono font-bold text-primary">{selectedMember?.avatar_url}</span>
+                  <div className="text-xs text-muted-foreground mt-1">Acumulado histórico</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/30 border-none">
+                <CardContent className="pt-6">
+                  <div className="text-sm font-medium text-muted-foreground uppercase">Projetos Ativos</div>
+                  <div className="text-2xl font-bold mt-1 text-blue-600">{memberStats?.projetosAtivos || 0} Projetos</div>
+                  <div className="text-xs text-muted-foreground mt-1">Status em execução</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/30 border-none">
+                <CardContent className="pt-6">
+                  <div className="text-sm font-medium text-muted-foreground uppercase">Taxa de Conversão</div>
+                  <div className="text-2xl font-bold mt-1 text-purple-600">{memberStats?.taxaConversao.toFixed(1) || 0}%</div>
+                  <div className="text-xs text-muted-foreground mt-1">Baseado em {memberStats?.totalLeads || 0} leads</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/30 border-none">
+                <CardContent className="pt-6">
+                  <div className="text-sm font-medium text-muted-foreground uppercase">Informações de Acesso</div>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-xs flex justify-between">
+                      <span className="text-muted-foreground">E-mail:</span>
+                      <span className="font-medium">{selectedMember?.email}</span>
+                    </div>
+                    <div className="text-xs flex justify-between">
+                      <span className="text-muted-foreground">Senha Atual:</span>
+                      <span className="font-mono font-bold text-primary">{selectedMember?.avatar_url}</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
           <div className="flex justify-end mt-4">
             <Button variant="outline" onClick={() => setIsStatsOpen(false)}>Fechar</Button>
           </div>

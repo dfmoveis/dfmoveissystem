@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -20,37 +21,38 @@ function LoginPage() {
   const { setUser, setRole } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock login logic
-    setTimeout(() => {
-      if (email === "admin@dfmoveis.com" || email === "rangelmaker@gmail.com") {
-        setRole("ADMIN");
-        setUser({
-          id: '00000000-0000-0000-0000-000000000000',
-          nome: 'Admin DF',
-          email: email,
-          role: 'ADMIN',
-          created_at: new Date().toISOString(),
-        });
-        toast.success("Login realizado com sucesso!");
-        navigate({ to: "/admin/dashboard" });
+    try {
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .eq('avatar_url', password);
+
+      if (error) throw error;
+
+      if (users && users.length > 0) {
+        const foundUser = users[0];
+        setRole(foundUser.role);
+        setUser(foundUser);
+        toast.success(`Bem-vindo, ${foundUser.nome}!`);
+        
+        if (foundUser.role === 'ADMIN') {
+          navigate({ to: "/admin/dashboard" });
+        } else {
+          navigate({ to: "/projetista/dashboard" });
+        }
       } else {
-        setRole("PROJETISTA");
-        setUser({
-          id: '11111111-1111-1111-1111-111111111111',
-          nome: 'Projetista DF',
-          email: email,
-          role: 'PROJETISTA',
-          created_at: new Date().toISOString(),
-        });
-        toast.success("Bem-vindo ao sistema!");
-        navigate({ to: "/projetista/dashboard" });
+        toast.error("E-mail ou senha incorretos.");
       }
+    } catch (error: any) {
+      toast.error("Erro ao realizar login: " + error.message);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
