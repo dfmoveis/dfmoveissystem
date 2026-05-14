@@ -331,15 +331,22 @@ function ProjetistaClientesPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>
-                Fonte <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="nome-projeto">Nome do Projeto</Label>
+              <Input
+                id="nome-projeto"
+                placeholder="Ex: Cozinha Planejada"
+                value={projectForm.nome}
+                onChange={(e) => setProjectForm({ ...projectForm, nome: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Fonte</Label>
               <Select
                 value={projectForm.fonte}
                 onValueChange={(v) => setProjectForm({ ...projectForm, fonte: v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Como chegou esse cliente?" />
+                  <SelectValue placeholder="Como chegou esse cliente? (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {FONTES.map((f) => (
@@ -352,12 +359,12 @@ function ProjetistaClientesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="valor">Valor estimado (R$)</Label>
+                <Label htmlFor="data-inicio">Data de início</Label>
                 <Input
-                  id="valor"
-                  type="number"
-                  value={projectForm.valor_venda}
-                  onChange={(e) => setProjectForm({ ...projectForm, valor_venda: e.target.value })}
+                  id="data-inicio"
+                  type="date"
+                  value={projectForm.data_inicio}
+                  onChange={(e) => setProjectForm({ ...projectForm, data_inicio: e.target.value })}
                 />
               </div>
               <div className="grid gap-2">
@@ -369,6 +376,15 @@ function ProjetistaClientesPage() {
                   onChange={(e) => setProjectForm({ ...projectForm, prazo_termino: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="valor">Valor estimado (R$) — opcional</Label>
+              <Input
+                id="valor"
+                type="number"
+                value={projectForm.valor_venda}
+                onChange={(e) => setProjectForm({ ...projectForm, valor_venda: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="obs">Observações</Label>
