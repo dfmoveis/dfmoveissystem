@@ -152,12 +152,17 @@ function ProjetistaClientesPage() {
   });
 
   const handleSaveClient = () => {
+    console.log('[clientes] handleSaveClient clicked', { clientForm, user });
     if (!clientForm.nome.trim()) {
       toast.error('Informe o nome do cliente.');
       return;
     }
     if (!clientForm.telefone.trim()) {
       toast.error('Informe o WhatsApp do cliente.');
+      return;
+    }
+    if (!user?.id) {
+      toast.error('Sessão inválida. Faça login novamente.');
       return;
     }
     createClient.mutate(clientForm);
