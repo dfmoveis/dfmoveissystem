@@ -209,6 +209,23 @@ function AgendaPage() {
     }
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: 'CONFIRMADO' })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      toast.success('Agendamento confirmado!');
+    },
+    onError: (error: any) => {
+      toast.error('Erro ao confirmar: ' + error.message);
+    }
+  });
+
   const handleEdit = (event: any) => {
     const start = parseISO(event.data_inicio);
     const end = parseISO(event.data_fim);
