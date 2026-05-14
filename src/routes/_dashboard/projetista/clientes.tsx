@@ -219,6 +219,7 @@ function ProjetistaClientesPage() {
                 <TableHead>Contato</TableHead>
                 <TableHead>Status Venda</TableHead>
                 <TableHead>Status Projeto</TableHead>
+                <TableHead>Ações</TableHead>
                 <TableHead className="text-right">Valor da Venda</TableHead>
               </TableRow>
             </TableHeader>
