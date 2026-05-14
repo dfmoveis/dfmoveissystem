@@ -148,11 +148,9 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
-  tooltip,
   dayTooltips,
   ...props
 }: React.ComponentProps<typeof DayButton> & { 
-  tooltip?: string;
   dayTooltips?: Record<string, React.ReactNode>;
 }) {
   const defaultClassNames = getDefaultClassNames();
