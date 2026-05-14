@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, AlertCircle, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Briefcase, AlertCircle, DollarSign, TrendingUp, Users, ArrowUpRight } from 'lucide-react';
 import { useAdminStats } from '@/hooks/use-admin-data';
+import { motion } from 'framer-motion';
 import { 
   BarChart, 
   Bar, 
@@ -20,6 +21,21 @@ export const Route = createFileRoute('/_dashboard/admin/dashboard')({
 });
 
 const COLORS = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6'];
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { y: 20, opacity: 0 },
+  show: { y: 0, opacity: 1 }
+};
 
 function AdminDashboard() {
   const { data: stats, isLoading } = useAdminStats();
