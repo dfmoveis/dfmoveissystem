@@ -383,12 +383,14 @@ function AgendaPage() {
             </Card>
           ) : (
             <div className="grid gap-3">
-              {filteredEvents.map((event: any) => (
-                <Card key={event.id} className="hover:shadow-md transition-all border-l-4 border-l-transparent overflow-hidden group" style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
+              {filteredEvents.map((event: any) => {
+                const isConfirmed = event.status === 'CONFIRMADO';
+                return (
+                <Card key={event.id} className={cn("hover:shadow-md transition-all border-l-4 overflow-hidden group", isConfirmed && "ring-2 ring-emerald-400/60 bg-emerald-50/30")} style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-start gap-4">
-                      <div className={`p-2 rounded-lg bg-muted/50`}>
-                        <Clock className="h-5 w-5 text-muted-foreground" />
+                      <div className={`p-2 rounded-lg ${isConfirmed ? 'bg-emerald-100' : 'bg-muted/50'}`}>
+                        {isConfirmed ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Clock className="h-5 w-5 text-muted-foreground" />}
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -396,6 +398,11 @@ function AgendaPage() {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_BADGE_COLORS[event.tipo]}`}>
                             {TIPO_LABELS[event.tipo]}
                           </span>
+                          {isConfirmed && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Confirmado
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                           <span className="font-semibold text-primary/80">
@@ -413,17 +420,32 @@ function AgendaPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-1">
+                      {!isConfirmed && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => confirmMutation.mutate(event.id)}
+                          disabled={confirmMutation.isPending}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Confirmar
+                        </Button>
+                      )}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
