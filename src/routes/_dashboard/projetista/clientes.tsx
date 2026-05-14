@@ -59,7 +59,8 @@ const FONTES = [
 ];
 
 function ProjetistaClientesPage() {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+  const isAdmin = role === 'ADMIN';
   const queryClient = useQueryClient();
 
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
@@ -92,6 +93,19 @@ function ProjetistaClientesPage() {
     },
   });
 
+  const { data: projetistas } = useQuery({
+    queryKey: ['projetistas-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, nome')
+        .eq('role', 'PROJETISTA')
+        .order('nome');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const createClient = useMutation({
     mutationFn: async (data: typeof clientForm) => {
       console.log('[clientes] inserting client', data);
@@ -104,7 +118,7 @@ function ProjetistaClientesPage() {
             telefone: data.telefone.trim(),
             email: data.email.trim() || null,
             endereco: data.endereco.trim() || null,
-            projetista_id: user.id,
+            projetista_id: null,
           },
         ])
         .select('id, nome')
@@ -154,6 +168,21 @@ function ProjetistaClientesPage() {
       setIsProjectDialogOpen(false);
     },
     onError: (e: any) => toast.error('Erro ao criar projeto: ' + (e?.message ?? e)),
+  });
+
+  const assignProjetista = useMutation({
+    mutationFn: async ({ clienteId, projetistaId }: { clienteId: string; projetistaId: string }) => {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ projetista_id: projetistaId })
+        .eq('id', clienteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
+      toast.success('Atendimento atualizado!');
+    },
+    onError: (e: any) => toast.error('Erro ao atribuir: ' + (e?.message ?? e)),
   });
 
   const handleSaveClient = () => {
@@ -372,23 +401,50 @@ function ProjetistaClientesPage() {
                         {c.endereco || '-'}
                       </TableCell>
                       <TableCell>
-                        {c.projetista ? (
-                          <Badge
-                            className={cn(
-                              'gap-1',
-                              isMine
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
-                            )}
-                          >
-                            {isMine && <Star className="h-3 w-3 fill-current" />}
-                            {isMine ? 'Meu Cliente' : c.projetista.nome}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground">
-                            Sem responsável
-                          </Badge>
-                        )}
+                        {(() => {
+                          const assigned = !!c.projetista_id;
+                          const canEdit = !assigned || isAdmin;
+                          if (!canEdit) {
+                            return (
+                              <Badge
+                                className={cn(
+                                  'gap-1',
+                                  isMine
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100',
+                                )}
+                              >
+                                {isMine && <Star className="h-3 w-3 fill-current" />}
+                                {isMine ? 'Meu Cliente' : c.projetista?.nome}
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <Select
+                              value={c.projetista_id ?? ''}
+                              onValueChange={(v) =>
+                                assignProjetista.mutate({ clienteId: c.id, projetistaId: v })
+                              }
+                              disabled={assignProjetista.isPending}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  'h-8 w-[180px]',
+                                  isMine && 'border-emerald-300 bg-emerald-50 text-emerald-800',
+                                )}
+                              >
+                                <SelectValue placeholder="Em aberto — selecionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {projetistas?.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.id === user?.id ? `${p.nome} (eu)` : p.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
