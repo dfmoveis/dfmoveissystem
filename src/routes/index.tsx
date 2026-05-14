@@ -39,9 +39,6 @@ export function LoginPage() {
     setErrorMessage(null);
 
     try {
-      console.log('[LOGIN DEBUG] VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-      console.log('[LOGIN DEBUG] VITE_SUPABASE_PUBLISHABLE_KEY present:', !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'length:', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.length);
-      console.log('[LOGIN DEBUG] key suffix:', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.slice(-8));
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
