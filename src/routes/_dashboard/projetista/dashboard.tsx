@@ -7,10 +7,12 @@ import {
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  BarChart3
+  BarChart3,
+  ArrowUpRight
 } from 'lucide-react';
 import { useAuthStore } from '@/hooks/use-auth';
 import { useProjetistaStats } from '@/hooks/use-projetista-data';
+import { motion } from 'framer-motion';
 import { 
   PieChart, 
   Pie, 
@@ -30,17 +32,32 @@ export const Route = createFileRoute('/_dashboard/projetista/dashboard')({
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const STATUS_COLORS: Record<string, string> = {
-  'PRONTO': 'bg-gray-100 text-gray-800',
-  'EM_EXECUCAO': 'bg-blue-100 text-blue-800',
-  'PAUSADO': 'bg-yellow-100 text-yellow-800',
-  'ATRASADO': 'bg-red-100 text-red-800',
-  'FINALIZADO': 'bg-green-100 text-green-800',
+  'PRONTO': 'bg-gray-100/50 text-gray-700 border-gray-100',
+  'EM_EXECUCAO': 'bg-blue-100/50 text-blue-700 border-blue-100',
+  'PAUSADO': 'bg-yellow-100/50 text-yellow-700 border-yellow-100',
+  'ATRASADO': 'bg-red-100/50 text-red-700 border-red-100',
+  'FINALIZADO': 'bg-green-100/50 text-green-700 border-green-100',
 };
 
 const VENDA_COLORS: Record<string, string> = {
-  'EM_NEGOCIACAO': 'bg-purple-100 text-purple-800',
-  'VENDEU': 'bg-emerald-100 text-emerald-800',
-  'NAO_VENDEU': 'bg-rose-100 text-rose-800',
+  'EM_NEGOCIACAO': 'bg-purple-100/50 text-purple-700 border-purple-100',
+  'VENDEU': 'bg-emerald-100/50 text-emerald-700 border-emerald-100',
+  'NAO_VENDEU': 'bg-rose-100/50 text-rose-700 border-rose-100',
+};
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { y: 20, opacity: 0 },
+  show: { y: 0, opacity: 1 }
 };
 
 function ProjetistaDashboard() {
