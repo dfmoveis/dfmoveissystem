@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
@@ -20,6 +21,11 @@ import { Route as DashboardAdminDashboardRouteImport } from './routes/_dashboard
 import { Route as DashboardAdminCrmRouteImport } from './routes/_dashboard/admin/crm'
 import { Route as DashboardAdminComissoesRouteImport } from './routes/_dashboard/admin/comissoes'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/_dashboard',
   getParentRoute: () => rootRouteImport,
@@ -75,6 +81,7 @@ const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
+  '/login': typeof LoginRoute
   '/_dashboard/agenda': typeof DashboardAgendaRoute
   '/_dashboard/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/_dashboard/admin/crm': typeof DashboardAdminCrmRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/agenda'
     | '/admin/comissoes'
     | '/admin/crm'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/agenda'
     | '/admin/comissoes'
     | '/admin/crm'
@@ -135,6 +146,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_dashboard'
+    | '/login'
     | '/_dashboard/agenda'
     | '/_dashboard/admin/comissoes'
     | '/_dashboard/admin/crm'
@@ -148,10 +160,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_dashboard': {
       id: '/_dashboard'
       path: ''
@@ -254,6 +274,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
