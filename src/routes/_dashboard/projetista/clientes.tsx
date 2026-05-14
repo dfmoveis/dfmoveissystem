@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { UserPlus, Star } from 'lucide-react';
+import { UserPlus, Star, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,18 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -43,16 +52,32 @@ interface ClienteRow {
   projetista: { id: string; nome: string } | null;
 }
 
+const FONTES = [
+  { value: 'ARQUITETO', label: 'Arquiteto' },
+  { value: 'VENDA_DIRETA', label: 'Venda Direta' },
+  { value: 'INDICACAO', label: 'Indicação' },
+];
+
 function ProjetistaClientesPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [pendingClient, setPendingClient] = useState<{ id: string; nome: string } | null>(null);
 
   const [clientForm, setClientForm] = useState({
     nome: '',
-    email: '',
     telefone: '',
+    email: '',
     endereco: '',
+  });
+
+  const [projectForm, setProjectForm] = useState({
+    fonte: '',
+    valor_venda: '',
+    prazo_termino: '',
+    observacoes: '',
   });
 
   const { data: clientes, isLoading } = useQuery({
@@ -60,32 +85,91 @@ function ProjetistaClientesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clientes')
-        .select('*, projetista:users!clientes_projetista_id_fkey(id, nome)')
+        .select('id, nome, email, telefone, endereco, created_at, projetista_id, projetista:projetista_id(id, nome)')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as unknown as ClienteRow[];
+      return (data ?? []) as unknown as ClienteRow[];
     },
   });
 
   const createClient = useMutation({
     mutationFn: async (data: typeof clientForm) => {
       if (!user?.id) throw new Error('Usuário não autenticado.');
-      const { error } = await supabase.from('clientes').insert([
+      const { data: inserted, error } = await supabase
+        .from('clientes')
+        .insert([
+          {
+            nome: data.nome.trim(),
+            telefone: data.telefone.trim(),
+            email: data.email.trim() || null,
+            endereco: data.endereco.trim() || null,
+            projetista_id: user.id,
+          },
+        ])
+        .select('id, nome')
+        .single();
+      if (error) throw error;
+      return inserted as { id: string; nome: string };
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
+      setClientForm({ nome: '', telefone: '', email: '', endereco: '' });
+      setIsClientDialogOpen(false);
+      toast.success('Cliente cadastrado! Agora preencha os dados do projeto.');
+      setPendingClient(created);
+      setIsProjectDialogOpen(true);
+    },
+    onError: (e: any) => toast.error('Erro ao salvar cliente: ' + (e?.message ?? e)),
+  });
+
+  const createProject = useMutation({
+    mutationFn: async (data: typeof projectForm) => {
+      if (!user?.id || !pendingClient) throw new Error('Cliente não selecionado.');
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase.from('projetos').insert([
         {
-          ...data,
+          cliente_id: pendingClient.id,
           projetista_id: user.id,
+          status: 'PRONTO',
+          status_venda: 'EM_NEGOCIACAO',
+          data_inicio: today,
+          prazo_termino: data.prazo_termino || today,
+          valor_venda: data.valor_venda ? parseFloat(data.valor_venda) : null,
+          observacoes: data.observacoes || null,
+          fonte: data.fonte || null,
         },
       ]);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
-      setIsClientDialogOpen(false);
-      setClientForm({ nome: '', email: '', telefone: '', endereco: '' });
-      toast.success('Cliente cadastrado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Projeto criado com sucesso!');
+      setProjectForm({ fonte: '', valor_venda: '', prazo_termino: '', observacoes: '' });
+      setPendingClient(null);
+      setIsProjectDialogOpen(false);
     },
-    onError: (e: any) => toast.error('Erro: ' + e.message),
+    onError: (e: any) => toast.error('Erro ao criar projeto: ' + (e?.message ?? e)),
   });
+
+  const handleSaveClient = () => {
+    if (!clientForm.nome.trim()) {
+      toast.error('Informe o nome do cliente.');
+      return;
+    }
+    if (!clientForm.telefone.trim()) {
+      toast.error('Informe o WhatsApp do cliente.');
+      return;
+    }
+    createClient.mutate(clientForm);
+  };
+
+  const handleSaveProject = () => {
+    if (!projectForm.fonte) {
+      toast.error('Selecione a fonte do projeto.');
+      return;
+    }
+    createProject.mutate(projectForm);
+  };
 
   return (
     <div className="space-y-6">
@@ -107,10 +191,15 @@ function ProjetistaClientesPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogDescription>
+                Nome e WhatsApp são obrigatórios. Após salvar, você cadastra o projeto.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="nome">Nome Completo</Label>
+                <Label htmlFor="nome">
+                  Nome Completo <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="nome"
                   value={clientForm.nome}
@@ -119,20 +208,23 @@ function ProjetistaClientesPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
+                  <Label htmlFor="tel">
+                    WhatsApp <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="tel"
+                    placeholder="(00) 00000-0000"
+                    value={clientForm.telefone}
+                    onChange={(e) => setClientForm({ ...clientForm, telefone: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={clientForm.email}
                     onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="tel">Telefone</Label>
-                  <Input
-                    id="tel"
-                    value={clientForm.telefone}
-                    onChange={(e) => setClientForm({ ...clientForm, telefone: e.target.value })}
                   />
                 </div>
               </div>
@@ -146,22 +238,87 @@ function ProjetistaClientesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                onClick={() => {
-                  if (!clientForm.nome.trim()) {
-                    toast.error('Informe o nome do cliente.');
-                    return;
-                  }
-                  createClient.mutate(clientForm);
-                }}
-                disabled={createClient.isPending}
-              >
-                Salvar Cliente
+              <Button onClick={handleSaveClient} disabled={createClient.isPending}>
+                {createClient.isPending ? 'Salvando...' : 'Salvar e continuar'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Project dialog (opens after saving client OR via row action) */}
+      <Dialog
+        open={isProjectDialogOpen}
+        onOpenChange={(open) => {
+          setIsProjectDialogOpen(open);
+          if (!open) setPendingClient(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dados do Projeto</DialogTitle>
+            <DialogDescription>
+              {pendingClient ? `Cliente: ${pendingClient.nome}` : 'Selecione um cliente.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>
+                Fonte <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={projectForm.fonte}
+                onValueChange={(v) => setProjectForm({ ...projectForm, fonte: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Como chegou esse cliente?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONTES.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="valor">Valor estimado (R$)</Label>
+                <Input
+                  id="valor"
+                  type="number"
+                  value={projectForm.valor_venda}
+                  onChange={(e) => setProjectForm({ ...projectForm, valor_venda: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="prazo">Prazo de término</Label>
+                <Input
+                  id="prazo"
+                  type="date"
+                  value={projectForm.prazo_termino}
+                  onChange={(e) => setProjectForm({ ...projectForm, prazo_termino: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="obs">Observações</Label>
+              <Textarea
+                id="obs"
+                rows={3}
+                value={projectForm.observacoes}
+                onChange={(e) => setProjectForm({ ...projectForm, observacoes: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveProject} disabled={createProject.isPending}>
+              {createProject.isPending ? 'Salvando...' : 'Criar Projeto'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -176,13 +333,14 @@ function ProjetistaClientesPage() {
                 <TableHead>Contato</TableHead>
                 <TableHead>Endereço</TableHead>
                 <TableHead>Atendimento Atual</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="animate-pulse">
-                    <TableCell colSpan={5} className="h-12 bg-muted/20" />
+                    <TableCell colSpan={6} className="h-12 bg-muted/20" />
                   </TableRow>
                 ))
               ) : clientes && clientes.length > 0 ? (
@@ -196,8 +354,8 @@ function ProjetistaClientesPage() {
                       <TableCell className="font-medium">{c.nome}</TableCell>
                       <TableCell>
                         <div className="flex flex-col text-xs text-muted-foreground">
-                          <span>{c.email || '-'}</span>
                           <span>{c.telefone || '-'}</span>
+                          <span>{c.email || '-'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate">
@@ -222,12 +380,25 @@ function ProjetistaClientesPage() {
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setPendingClient({ id: c.id, nome: c.nome });
+                            setIsProjectDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Novo Projeto
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Nenhum cliente cadastrado ainda.
                   </TableCell>
                 </TableRow>
