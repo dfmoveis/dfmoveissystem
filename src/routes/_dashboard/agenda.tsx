@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfDay, isSameDay, parseISO } from 'date-fns';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { format, startOfDay, isSameDay, parseISO, areIntervalsOverlapping } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const Route = createFileRoute('/_dashboard/agenda')({
