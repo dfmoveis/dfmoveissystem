@@ -266,7 +266,7 @@ function EquipePage() {
                     </div>
                     <div className="text-xs flex justify-between">
                       <span className="text-muted-foreground">Senha Atual:</span>
-                      <span className="font-mono font-bold text-primary">{selectedMember?.avatar_url}</span>
+                      <span className="font-mono font-bold text-primary">{selectedMember?.password}</span>
                     </div>
                   </div>
                 </CardContent>
