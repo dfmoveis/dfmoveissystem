@@ -10,10 +10,17 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Download, Calendar } from 'lucide-react';
+import { DollarSign, Download, Calendar, FileJson, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useState } from 'react';
+import { exportToCSV, exportToPDF } from '@/lib/export-utils';
 
 export const Route = createFileRoute('/_dashboard/admin/comissoes')({
   component: CommissionsPage,
@@ -40,10 +47,24 @@ function CommissionsPage() {
               onChange={(e) => setSelectedMonth(e.target.value)}
             />
           </div>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={!commissions || commissions.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportToCSV(commissions || [], selectedMonth)}>
+                <FileJson className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToPDF(commissions || [], selectedMonth)}>
+                <FileText className="mr-2 h-4 w-4" />
+                Exportar PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
