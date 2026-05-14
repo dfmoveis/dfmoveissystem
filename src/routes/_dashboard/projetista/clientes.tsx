@@ -93,6 +93,19 @@ function ProjetistaClientesPage() {
     },
   });
 
+  const { data: projetistas } = useQuery({
+    queryKey: ['projetistas-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, nome')
+        .eq('role', 'PROJETISTA')
+        .order('nome');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const createClient = useMutation({
     mutationFn: async (data: typeof clientForm) => {
       console.log('[clientes] inserting client', data);
@@ -105,7 +118,7 @@ function ProjetistaClientesPage() {
             telefone: data.telefone.trim(),
             email: data.email.trim() || null,
             endereco: data.endereco.trim() || null,
-            projetista_id: user.id,
+            projetista_id: null,
           },
         ])
         .select('id, nome')
