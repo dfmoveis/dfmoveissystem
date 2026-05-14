@@ -59,7 +59,8 @@ const FONTES = [
 ];
 
 function ProjetistaClientesPage() {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+  const isAdmin = role === 'ADMIN';
   const queryClient = useQueryClient();
 
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
