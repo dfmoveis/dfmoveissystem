@@ -73,12 +73,14 @@ export function DashboardLayout() {
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background">
         <Sidebar className="border-r border-border">
-          <SidebarHeader className="p-0 border-b border-border overflow-hidden">
-            <img
-              src={logoDF}
-              alt="DF Móveis"
-              className="block w-full h-auto object-contain dark:brightness-0 dark:invert transition-transform hover:scale-105"
-            />
+          <SidebarHeader className="p-3 border-b border-border overflow-hidden">
+            <div className="flex items-center justify-center w-full h-20 md:h-24">
+              <img
+                src={logoDF}
+                alt="DF Móveis"
+                className="max-w-full max-h-full object-contain dark:brightness-0 dark:invert transition-transform hover:scale-105"
+              />
+            </div>
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
