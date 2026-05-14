@@ -255,6 +255,4 @@ function AdminDashboard() {
     </motion.div>
   );
 }
-  );
-}
 
