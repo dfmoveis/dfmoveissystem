@@ -139,19 +139,14 @@ function AgendaPage() {
     mutationFn: async (event: any) => {
       if (!event.titulo?.trim()) throw new Error('Informe o título do compromisso.');
       if (!event.data) throw new Error('Selecione a data.');
-      if (!event.hora_inicio || !event.hora_fim) throw new Error('Informe os horários de início e fim.');
+      if (!event.hora_inicio) throw new Error('Informe o horário de início.');
       if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
 
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
-      const data_fim = new Date(`${event.data}T${event.hora_fim}`);
-
-      if (isNaN(data_inicio.getTime()) || isNaN(data_fim.getTime())) {
+      if (isNaN(data_inicio.getTime())) {
         throw new Error('Data ou hora inválida.');
       }
-
-      if (data_fim <= data_inicio) {
-        throw new Error('A hora de término deve ser após a hora de início.');
-      }
+      const data_fim = new Date(data_inicio.getTime() + 60 * 60 * 1000);
 
       // Check for overlaps in the same team (or just globally for simplicity as per request)
       const hasOverlap = events?.some(e => {
@@ -285,15 +280,9 @@ function AgendaPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="inicio">Hora Início</Label>
-                  <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="fim">Hora Fim</Label>
-                  <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="inicio">Hora Início</Label>
+                <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
