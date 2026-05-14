@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clientes: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      comissoes: {
+        Row: {
+          created_at: string | null
+          id: string
+          mes_referencia: string
+          percentual: number
+          projetista_id: string
+          projeto_id: string
+          valor_calculado: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mes_referencia: string
+          percentual: number
+          projetista_id: string
+          projeto_id: string
+          valor_calculado: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mes_referencia?: string
+          percentual?: number
+          projetista_id?: string
+          projeto_id?: string
+          valor_calculado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_projetista_id_fkey"
+            columns: ["projetista_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comissoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projetos: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          data_inicio: string
+          forma_pagamento: string | null
+          id: string
+          prazo_termino: string
+          projetista_id: string
+          status: Database["public"]["Enums"]["project_status"]
+          status_venda: Database["public"]["Enums"]["sale_status"]
+          valor_venda: number | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          data_inicio: string
+          forma_pagamento?: string | null
+          id?: string
+          prazo_termino: string
+          projetista_id: string
+          status?: Database["public"]["Enums"]["project_status"]
+          status_venda?: Database["public"]["Enums"]["sale_status"]
+          valor_venda?: number | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          data_inicio?: string
+          forma_pagamento?: string | null
+          id?: string
+          prazo_termino?: string
+          projetista_id?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          status_venda?: Database["public"]["Enums"]["sale_status"]
+          valor_venda?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_projetista_id_fkey"
+            columns: ["projetista_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          id: string
+          nome: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          nome: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +175,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      project_status:
+        | "PRONTO"
+        | "EM_EXECUCAO"
+        | "PAUSADO"
+        | "ATRASADO"
+        | "FINALIZADO"
+      sale_status: "EM_NEGOCIACAO" | "VENDEU" | "NAO_VENDEU"
+      user_role: "ADMIN" | "PROJETISTA"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +309,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      project_status: [
+        "PRONTO",
+        "EM_EXECUCAO",
+        "PAUSADO",
+        "ATRASADO",
+        "FINALIZADO",
+      ],
+      sale_status: ["EM_NEGOCIACAO", "VENDEU", "NAO_VENDEU"],
+      user_role: ["ADMIN", "PROJETISTA"],
+    },
   },
 } as const
