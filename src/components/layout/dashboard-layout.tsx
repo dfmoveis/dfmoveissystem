@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   LayoutDashboard, 
   Users, 
