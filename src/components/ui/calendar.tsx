@@ -6,6 +6,7 @@ import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function Calendar({
   className,
@@ -15,9 +16,11 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  dayTooltips,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
+  dayTooltips?: Record<string, React.ReactNode>;
 }) {
   const defaultClassNames = getDefaultClassNames();
 
@@ -119,7 +122,12 @@ function Calendar({
 
           return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
         },
-        DayButton: CalendarDayButton,
+        DayButton: (dayProps) => (
+          <CalendarDayButton 
+            {...dayProps} 
+            dayTooltips={dayTooltips}
+          />
+        ),
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
@@ -140,8 +148,11 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
+  dayTooltips,
   ...props
-}: React.ComponentProps<typeof DayButton>) {
+}: React.ComponentProps<typeof DayButton> & { 
+  dayTooltips?: Record<string, React.ReactNode>;
+}) {
   const defaultClassNames = getDefaultClassNames();
 
   const ref = React.useRef<HTMLButtonElement>(null);
@@ -149,7 +160,7 @@ function CalendarDayButton({
     if (modifiers.focused) ref.current?.focus();
   }, [modifiers.focused]);
 
-  return (
+  const content = (
     <Button
       ref={ref}
       variant="ghost"
@@ -172,6 +183,26 @@ function CalendarDayButton({
       {...props}
     />
   );
+
+  const dayKey = day.date.toISOString().split('T')[0];
+  const tooltipContent = dayTooltips?.[dayKey];
+
+  if (tooltipContent) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {content}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[200px] bg-popover text-popover-foreground border shadow-lg p-2">
+            {tooltipContent}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return content;
 }
 
 export { Calendar, CalendarDayButton };

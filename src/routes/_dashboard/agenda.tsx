@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfDay, isSameDay, parseISO } from 'date-fns';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { format, startOfDay, isSameDay, parseISO, areIntervalsOverlapping } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const Route = createFileRoute('/_dashboard/agenda')({
@@ -87,6 +93,38 @@ function AgendaPage() {
     return events.filter(e => isSameDay(parseISO(e.data_inicio), selectedDate));
   }, [events, selectedDate]);
 
+  const dayTooltips = useMemo(() => {
+    const tooltips: Record<string, React.ReactNode> = {};
+    if (!events) return tooltips;
+
+    const grouped = events.reduce((acc: any, event) => {
+      const dateKey = event.data_inicio.split('T')[0];
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(event);
+      return acc;
+    }, {});
+
+    Object.keys(grouped).forEach(dateKey => {
+      tooltips[dateKey] = (
+        <div className="space-y-2">
+          {grouped[dateKey].slice(0, 3).map((e: any) => (
+            <div key={e.id} className="text-[10px] border-b border-border last:border-0 pb-1">
+              <p className="font-bold truncate">{e.titulo}</p>
+              <p className="text-muted-foreground">
+                {format(parseISO(e.data_inicio), "HH:mm")} - {e.cliente?.nome || 'Sem cliente'}
+              </p>
+            </div>
+          ))}
+          {grouped[dateKey].length > 3 && (
+            <p className="text-[9px] text-center font-bold">+ {grouped[dateKey].length - 3} compromissos</p>
+          )}
+        </div>
+      );
+    });
+
+    return tooltips;
+  }, [events]);
+
   const modifiers = useMemo(() => {
     const mods: Record<string, Date[]> = { REUNIAO: [], ATENDIMENTO: [], VISITA: [] };
     events?.forEach(e => {
@@ -99,14 +137,35 @@ function AgendaPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (event: any) => {
-      const data_inicio = new Date(`${event.data}T${event.hora_inicio}`).toISOString();
-      const data_fim = new Date(`${event.data}T${event.hora_fim}`).toISOString();
+      const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
+      const data_fim = new Date(`${event.data}T${event.hora_fim}`);
       
+      if (data_fim <= data_inicio) {
+        throw new Error('A hora de término deve ser após a hora de início.');
+      }
+
+      // Check for overlaps in the same team (or just globally for simplicity as per request)
+      const hasOverlap = events?.some(e => {
+        if (editingEventId && e.id === editingEventId) return false;
+        
+        const eStart = parseISO(e.data_inicio);
+        const eEnd = parseISO(e.data_fim);
+        
+        return areIntervalsOverlapping(
+          { start: data_inicio, end: data_fim },
+          { start: eStart, end: eEnd }
+        );
+      });
+
+      if (hasOverlap) {
+        throw new Error('Já existe um agendamento neste horário. Por favor, escolha outro horário.');
+      }
+
       const payload = {
         titulo: event.titulo,
         descricao: event.descricao,
-        data_inicio,
-        data_fim,
+        data_inicio: data_inicio.toISOString(),
+        data_fim: data_fim.toISOString(),
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
         criado_por: user?.id || '00000000-0000-0000-0000-000000000000'
@@ -263,6 +322,7 @@ function AgendaPage() {
               locale={ptBR}
               className="rounded-md w-full"
               modifiers={modifiers}
+              dayTooltips={dayTooltips}
               modifiersClassNames={{
                 VISITA: "bg-green-100 text-green-700 font-bold border-b-2 border-green-500",
                 ATENDIMENTO: "bg-blue-100 text-blue-700 font-bold border-b-2 border-blue-500",
