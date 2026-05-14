@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useProjects } from '@/hooks/use-projects';
 import { useAuthStore } from '@/hooks/use-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   Table, 
   TableBody, 
@@ -20,6 +20,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from 'react';
 import { SaleStatus } from '@/types/database';
+import { Button } from '@/components/ui/button';
+import { Plus, UserPlus, FileText, Phone, Mail as MailIcon } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_dashboard/projetista/clientes')({
   component: ProjetistaClientesPage,
@@ -27,11 +42,66 @@ export const Route = createFileRoute('/_dashboard/projetista/clientes')({
 
 function ProjetistaClientesPage() {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [statusVenda, setStatusVenda] = useState<string>('all');
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+  const [clientForm, setClientForm] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    endereco: ''
+  });
+
+  const [projectForm, setProjectForm] = useState({
+    status: 'PRONTO',
+    prazo_termino: '',
+    valor_venda: '',
+    observacoes: ''
+  });
 
   const { data: projects, isLoading } = useProjects({
     projetista_id: user?.id,
     status_venda: statusVenda === 'all' ? undefined : statusVenda as SaleStatus
+  });
+
+  const createClient = useMutation({
+    mutationFn: async (data: typeof clientForm) => {
+      const { error } = await supabase.from('clientes').insert([data]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsClientDialogOpen(false);
+      setClientForm({ nome: '', email: '', telefone: '', endereco: '' });
+      toast.success('Cliente cadastrado com sucesso!');
+    },
+    onError: (e: any) => toast.error('Erro: ' + e.message)
+  });
+
+  const createProject = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase.from('projetos').insert([{
+        cliente_id: selectedClientId,
+        projetista_id: user?.id,
+        status: data.status,
+        data_inicio: new Date().toISOString(),
+        prazo_termino: new Date(data.prazo_termino).toISOString(),
+        status_venda: 'EM_NEGOCIACAO',
+        valor_venda: parseFloat(data.valor_venda) || 0,
+        observacoes: data.observacoes
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsProjectDialogOpen(false);
+      setProjectForm({ status: 'PRONTO', prazo_termino: '', valor_venda: '', observacoes: '' });
+      toast.success('Projeto criado com sucesso!');
+    },
+    onError: (e: any) => toast.error('Erro: ' + e.message)
   });
 
   const getStatusBadge = (status: SaleStatus) => {
