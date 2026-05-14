@@ -356,5 +356,3 @@ function AgendaPage() {
     </div>
   );
 }
-  );
-}
