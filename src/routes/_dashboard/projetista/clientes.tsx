@@ -75,8 +75,10 @@ function ProjetistaClientesPage() {
   });
 
   const [projectForm, setProjectForm] = useState({
+    nome: '',
     fonte: '',
     valor_venda: '',
+    data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
     observacoes: '',
   });
