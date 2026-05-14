@@ -40,7 +40,7 @@ function EquipePage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const password = generateRandomPassword();
-    await addMember.mutateAsync({ ...newMember, avatar_url: password }); 
+    await addMember.mutateAsync({ ...newMember, password }); 
     setGeneratedPassword(password);
     setNewMember({ nome: '', email: '' });
   };
