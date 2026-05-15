@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Sistema de Gestão de Projetos e Vendas" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "theme-color", content: "#1e293b" },
+      { name: "theme-color", content: "#ffffff" },
     ],
     links: [
       {
