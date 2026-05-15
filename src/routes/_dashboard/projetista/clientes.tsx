@@ -402,6 +402,20 @@ function ProjetistaClientesPage() {
                 onChange={(e) => setProjectForm({ ...projectForm, observacoes: e.target.value })}
               />
             </div>
+            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40 transition-colors">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={projectForm.sem_projetista}
+                onChange={(e) => setProjectForm({ ...projectForm, sem_projetista: e.target.checked })}
+              />
+              <div className="text-sm">
+                <div className="font-medium">Enviar para a Fila de Demandas</div>
+                <div className="text-xs text-muted-foreground">
+                  Cria sem projetista atribuído. Qualquer projetista poderá assumir na aba Demandas.
+                </div>
+              </div>
+            </label>
           </div>
           <DialogFooter>
             <Button onClick={handleSaveProject} disabled={createProject.isPending}>
