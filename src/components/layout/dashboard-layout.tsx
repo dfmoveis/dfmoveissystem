@@ -39,20 +39,20 @@ export function DashboardLayout() {
   const { user, role, setRole, setUser, logout } = useAuthStore();
   const { data: team } = useTeam();
 
-  // Carrega o admin real do banco (projetos.projetista_id e agendamentos.criado_por
-  // têm FK pra users(id); um id fake quebra os inserts).
-  const { data: adminUser } = useQuery({
-    queryKey: ['admin-user'],
+  // Carrega os dados atualizados do usuário logado diretamente do banco
+  const { data: profileData } = useQuery({
+    queryKey: ['user-profile', user?.id],
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('role', 'ADMIN')
-        .limit(1)
+        .eq('id', user.id)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
+    enabled: !!user?.id,
   });
 
   const adminLinks = [
@@ -79,17 +79,17 @@ export function DashboardLayout() {
     setRole(newRole);
     if (newRole === 'PROJETISTA' && team && team.length > 0) {
       setUser(team[0]);
-    } else if (newRole === 'ADMIN' && adminUser) {
-      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
+    } else if (newRole === 'ADMIN' && profileData) {
+      setUser({ ...profileData, avatar_url: profileData.avatar_url ?? undefined, created_at: profileData.created_at ?? new Date().toISOString() } as any);
     }
   };
 
-  // Auto-corrige sessão admin com id inválido (legado do localStorage).
+  // Sincroniza dados do perfil com o store de autenticação
   React.useEffect(() => {
-    if (role === 'ADMIN' && adminUser && user && user.id !== adminUser.id) {
-      setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
+    if (profileData && user && (user.id !== profileData.id || user.nome !== profileData.nome || user.avatar_url !== (profileData.avatar_url ?? undefined))) {
+      setUser({ ...profileData, avatar_url: profileData.avatar_url ?? undefined, created_at: profileData.created_at ?? new Date().toISOString() } as any);
     }
-  }, [role, adminUser, user, setUser]);
+  }, [profileData, user, setUser]);
 
   const currentLinks = role === 'ADMIN' ? adminLinks : projetistaLinks;
 
