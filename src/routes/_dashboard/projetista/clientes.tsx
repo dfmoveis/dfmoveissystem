@@ -181,7 +181,7 @@ function ProjetistaClientesPage() {
           ? 'Projeto criado e enviado para a Fila de Demandas!'
           : 'Projeto criado com sucesso!',
       );
-      setProjectForm({ nome: '', fonte: '', nome_arquiteto: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
+      setProjectForm({ nome: '', fonte: '', nome_arquiteto: '', rt_arquiteto: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
