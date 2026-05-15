@@ -71,6 +71,48 @@ export type Database = {
           },
         ]
       }
+      anotacoes_projeto: {
+        Row: {
+          autor_id: string
+          autor_nome: string
+          conteudo: string
+          created_at: string
+          id: string
+          projeto_id: string
+        }
+        Insert: {
+          autor_id: string
+          autor_nome: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          projeto_id: string
+        }
+        Update: {
+          autor_id?: string
+          autor_nome?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          projeto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anotacoes_projeto_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anotacoes_projeto_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           created_at: string | null
@@ -163,13 +205,20 @@ export type Database = {
           estagio_andamento: string
           fonte: string | null
           forma_pagamento: string | null
+          forma_pagamento_entrada: string | null
           id: string
+          motivo_perda: string | null
           nome: string | null
+          nome_arquiteto: string | null
+          numero_parcelas: number | null
           observacoes: string | null
+          percentual_comissao: number | null
           prazo_termino: string
           projetista_id: string | null
           status: Database["public"]["Enums"]["project_status"]
           status_venda: Database["public"]["Enums"]["sale_status"]
+          valor_entrada: number | null
+          valor_parcela: number | null
           valor_venda: number | null
         }
         Insert: {
@@ -180,13 +229,20 @@ export type Database = {
           estagio_andamento?: string
           fonte?: string | null
           forma_pagamento?: string | null
+          forma_pagamento_entrada?: string | null
           id?: string
+          motivo_perda?: string | null
           nome?: string | null
+          nome_arquiteto?: string | null
+          numero_parcelas?: number | null
           observacoes?: string | null
+          percentual_comissao?: number | null
           prazo_termino: string
           projetista_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
+          valor_entrada?: number | null
+          valor_parcela?: number | null
           valor_venda?: number | null
         }
         Update: {
@@ -197,13 +253,20 @@ export type Database = {
           estagio_andamento?: string
           fonte?: string | null
           forma_pagamento?: string | null
+          forma_pagamento_entrada?: string | null
           id?: string
+          motivo_perda?: string | null
           nome?: string | null
+          nome_arquiteto?: string | null
+          numero_parcelas?: number | null
           observacoes?: string | null
+          percentual_comissao?: number | null
           prazo_termino?: string
           projetista_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
+          valor_entrada?: number | null
+          valor_parcela?: number | null
           valor_venda?: number | null
         }
         Relationships: [
@@ -270,6 +333,7 @@ export type Database = {
         | "PAUSADO"
         | "ATRASADO"
         | "FINALIZADO"
+        | "EM_ACOMPANHAMENTO"
       sale_status: "EM_NEGOCIACAO" | "VENDEU" | "NAO_VENDEU"
       user_role: "ADMIN" | "PROJETISTA"
     }
@@ -405,6 +469,7 @@ export const Constants = {
         "PAUSADO",
         "ATRASADO",
         "FINALIZADO",
+        "EM_ACOMPANHAMENTO",
       ],
       sale_status: ["EM_NEGOCIACAO", "VENDEU", "NAO_VENDEU"],
       user_role: ["ADMIN", "PROJETISTA"],

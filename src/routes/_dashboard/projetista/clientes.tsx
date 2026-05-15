@@ -56,6 +56,7 @@ const FONTES = [
   { value: 'ARQUITETO', label: 'Arquiteto' },
   { value: 'VENDA_DIRETA', label: 'Venda Direta' },
   { value: 'INDICACAO', label: 'Indicação' },
+  { value: 'REFORMA', label: 'Reforma' },
 ];
 
 function ProjetistaClientesPage() {
@@ -77,6 +78,7 @@ function ProjetistaClientesPage() {
   const [projectForm, setProjectForm] = useState({
     nome: '',
     fonte: '',
+    nome_arquiteto: '',
     valor_venda: '',
     data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
@@ -159,6 +161,7 @@ function ProjetistaClientesPage() {
         observacoes: data.observacoes || null,
         nome: data.nome.trim() || null,
         fonte: data.fonte || null,
+        nome_arquiteto: (data.fonte === 'ARQUITETO' || data.fonte === 'INDICACAO') ? data.nome_arquiteto : null,
       };
       console.log('[projetos] inserting', payload);
       const { error } = await supabase.from('projetos').insert([payload]);
@@ -176,7 +179,7 @@ function ProjetistaClientesPage() {
           ? 'Projeto criado e enviado para a Fila de Demandas!'
           : 'Projeto criado com sucesso!',
       );
-      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
+      setProjectForm({ nome: '', fonte: '', nome_arquiteto: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
@@ -364,6 +367,17 @@ function ProjetistaClientesPage() {
                 </SelectContent>
               </Select>
             </div>
+            {(projectForm.fonte === 'ARQUITETO' || projectForm.fonte === 'INDICACAO') && (
+              <div className="grid gap-2">
+                <Label htmlFor="nome-arquiteto">Nome do Arquiteto / Parceiro</Label>
+                <Input
+                  id="nome-arquiteto"
+                  placeholder="Ex: João Silva"
+                  value={projectForm.nome_arquiteto}
+                  onChange={(e) => setProjectForm({ ...projectForm, nome_arquiteto: e.target.value })}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="data-inicio">Data de início</Label>
