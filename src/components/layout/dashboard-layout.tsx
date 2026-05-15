@@ -37,9 +37,8 @@ import {
 } from '@/components/ui/sidebar';
 
 export function DashboardLayout() {
-  const { user, role, setRole, setUser, logout } = useAuthStore();
+  const { user, role, setRole, setUser, logout, deferredPrompt, setDeferredPrompt } = useAuthStore();
   const { data: team } = useTeam();
-  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
 
   React.useEffect(() => {
     const handler = (e: any) => {
@@ -52,7 +51,7 @@ export function DashboardLayout() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [setDeferredPrompt]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -153,24 +152,7 @@ export function DashboardLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      onClick={handleInstallClick}
-                      className={cn(
-                        "w-full justify-start gap-3 text-primary font-semibold transition-all",
-                        deferredPrompt ? "flex animate-pulse" : "hidden"
-                      )}
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Instalar Aplicativo</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Botão de instalação removido daqui conforme solicitado para mover para o perfil */}
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-border">
             <div className="flex items-center gap-3 px-2 py-1">
