@@ -85,10 +85,10 @@ export function DashboardLayout() {
 
   // Auto-corrige sessão admin com id inválido (legado do localStorage).
   React.useEffect(() => {
-    if (role === 'ADMIN' && adminUser && user?.id !== adminUser.id) {
+    if (role === 'ADMIN' && adminUser && user && user.id !== adminUser.id) {
       setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
     }
-  }, [role, adminUser, user?.id, setUser]);
+  }, [role, adminUser, user, setUser]);
 
   const currentLinks = role === 'ADMIN' ? adminLinks : projetistaLinks;
 
