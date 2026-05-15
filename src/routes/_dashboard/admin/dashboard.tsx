@@ -50,7 +50,7 @@ function AdminDashboard() {
 
   const kpis = [
     { 
-      title: 'Vendas Totais', 
+      title: 'Total Vendido', 
       value: stats?.totalVendas || 0,
       isCurrency: true,
       icon: DollarSign, 
@@ -58,19 +58,27 @@ function AdminDashboard() {
       bg: 'bg-emerald-50/50'
     },
     { 
-      title: 'Projetos em Execução', 
-      value: stats?.projetosExecucao || 0, 
-      icon: Briefcase, 
+      title: 'Total Entradas', 
+      value: stats?.totalEntradas || 0,
+      isCurrency: true,
+      icon: TrendingUp, 
       color: 'text-blue-500',
       bg: 'bg-blue-50/50'
     },
     { 
-      title: 'Taxa de Conversão', 
-      value: stats?.taxaConversao || 0,
-      isPercent: true,
-      icon: TrendingUp, 
+      title: 'Comissões Previstas', 
+      value: stats?.totalComissoes || 0,
+      isCurrency: true,
+      icon: BarChart3, 
       color: 'text-purple-500',
       bg: 'bg-purple-50/50'
+    },
+    { 
+      title: 'Projetos Ativos', 
+      value: stats?.projetosExecucao || 0, 
+      icon: Briefcase, 
+      color: 'text-amber-500',
+      bg: 'bg-amber-50/50'
     },
   ];
 
@@ -86,7 +94,7 @@ function AdminDashboard() {
         <p className="text-muted-foreground">Visão geral do desempenho da DF Móveis Planejados.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <motion.div key={kpi.title} variants={item}>
             <Card className="overflow-hidden border-none shadow-md bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">
