@@ -66,12 +66,28 @@ function AdminDashboard() {
       bg: 'bg-blue-50/50'
     },
     { 
-      title: 'Comissões Previstas', 
+      title: 'Comissões Projetistas', 
       value: stats?.totalComissoes || 0,
       isCurrency: true,
       icon: BarChart3, 
       color: 'text-purple-500',
       bg: 'bg-purple-50/50'
+    },
+    { 
+      title: 'Comissões RTs', 
+      value: stats?.totalRTs || 0,
+      isCurrency: true,
+      icon: Users, 
+      color: 'text-orange-500',
+      bg: 'bg-orange-50/50'
+    },
+    { 
+      title: 'Parcelas a Receber', 
+      value: stats?.totalParcelasReceber || 0,
+      isCurrency: true,
+      icon: DollarSign, 
+      color: 'text-rose-500',
+      bg: 'bg-rose-50/50'
     },
     { 
       title: 'Projetos Ativos', 
@@ -94,7 +110,7 @@ function AdminDashboard() {
         <p className="text-muted-foreground">Visão geral do desempenho da DF Móveis Planejados.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {kpis.map((kpi) => (
           <motion.div key={kpi.title} variants={item}>
             <Card className="overflow-hidden border-none shadow-md bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">

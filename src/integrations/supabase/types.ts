@@ -215,6 +215,7 @@ export type Database = {
           percentual_comissao: number | null
           prazo_termino: string
           projetista_id: string | null
+          rt_arquiteto: number | null
           status: Database["public"]["Enums"]["project_status"]
           status_venda: Database["public"]["Enums"]["sale_status"]
           valor_entrada: number | null
@@ -239,6 +240,7 @@ export type Database = {
           percentual_comissao?: number | null
           prazo_termino: string
           projetista_id?: string | null
+          rt_arquiteto?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
           valor_entrada?: number | null
@@ -263,6 +265,7 @@ export type Database = {
           percentual_comissao?: number | null
           prazo_termino?: string
           projetista_id?: string | null
+          rt_arquiteto?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
           valor_entrada?: number | null

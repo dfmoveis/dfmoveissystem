@@ -327,7 +327,7 @@ function MeusProjetosPage() {
             <Button variant="outline" onClick={() => setClosingProject(null)}>Cancelar</Button>
             <Button 
               className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={!valorVenda || !percentualComissao || concluir.isPending}
+              disabled={!valorVenda || !percentualComissao || !valorEntrada || !numParcelas || !valorParcela || concluir.isPending}
               onClick={() => {
                 concluir.mutate({
                   id: closingProject?.id,

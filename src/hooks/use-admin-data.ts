@@ -38,6 +38,22 @@ export function useAdminStats() {
           return acc + (valor * (perc / 100));
         }, 0);
 
+      const totalRTs = (projetos as any[])
+        .filter(p => p.status_venda === 'VENDEU' && (p.fonte === 'ARQUITETO' || p.fonte === 'INDICACAO'))
+        .reduce((acc, p) => {
+          const valor = Number(p.valor_venda) || 0;
+          const rt = Number(p.rt_arquiteto) || 0;
+          return acc + (valor * (rt / 100));
+        }, 0);
+
+      const totalParcelasReceber = (projetos as any[])
+        .filter(p => p.status_venda === 'VENDEU')
+        .reduce((acc, p) => {
+          const num = Number(p.numero_parcelas) || 0;
+          const valor = Number(p.valor_parcela) || 0;
+          return acc + (num * valor);
+        }, 0);
+
       const projetosExecucao = (projetos as any[])
         .filter(p => p.status === 'EM_EXECUCAO').length;
 
@@ -74,6 +90,8 @@ export function useAdminStats() {
         totalVendas,
         totalEntradas,
         totalComissoes,
+        totalRTs,
+        totalParcelasReceber,
         projetosExecucao,
         taxaConversao,
         statusData,
