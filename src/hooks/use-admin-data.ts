@@ -90,6 +90,8 @@ export function useAdminStats() {
         totalVendas,
         totalEntradas,
         totalComissoes,
+        totalRTs,
+        totalParcelasReceber,
         projetosExecucao,
         taxaConversao,
         statusData,
