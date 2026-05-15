@@ -67,7 +67,8 @@ export function DashboardLayout() {
   ];
 
   const projetistaLinks = [
-    { title: 'Meus Projetos', icon: Briefcase, to: '/projetista/dashboard' },
+    { title: 'Dashboard', icon: LayoutDashboard, to: '/projetista/dashboard' },
+    { title: 'Meus Projetos', icon: Briefcase, to: '/projetista/meus-projetos' },
     { title: 'Demandas', icon: Inbox, to: '/demandas' },
     { title: 'Clientes', icon: UserSquare2, to: '/projetista/clientes' },
     { title: 'Agenda', icon: CalendarDays, to: '/agenda' },
