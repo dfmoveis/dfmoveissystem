@@ -165,7 +165,6 @@ export function DashboardLayout() {
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6">
             <SidebarTrigger className="-ml-1" />
             <div className="flex-1">
-              <h2 className="text-lg font-semibold">DF Móveis Planejados</h2>
             </div>
           </header>
           <div className="p-6">
