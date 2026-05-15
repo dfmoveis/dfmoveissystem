@@ -9,9 +9,21 @@
   "icons": [
     {
       "src": "https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/75047b19-7565-42ec-a09c-32367503da0f/logo-df-pwa.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/75047b19-7565-42ec-a09c-32367503da0f/logo-df-pwa.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/75047b19-7565-42ec-a09c-32367503da0f/logo-df-pwa.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
