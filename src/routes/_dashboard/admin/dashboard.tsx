@@ -66,12 +66,28 @@ function AdminDashboard() {
       bg: 'bg-blue-50/50'
     },
     { 
-      title: 'Comissões Previstas', 
+      title: 'Comissões Projetistas', 
       value: stats?.totalComissoes || 0,
       isCurrency: true,
       icon: BarChart3, 
       color: 'text-purple-500',
       bg: 'bg-purple-50/50'
+    },
+    { 
+      title: 'Comissões RTs', 
+      value: stats?.totalRTs || 0,
+      isCurrency: true,
+      icon: Users, 
+      color: 'text-orange-500',
+      bg: 'bg-orange-50/50'
+    },
+    { 
+      title: 'Parcelas a Receber', 
+      value: stats?.totalParcelasReceber || 0,
+      isCurrency: true,
+      icon: DollarSign, 
+      color: 'text-rose-500',
+      bg: 'bg-rose-50/50'
     },
     { 
       title: 'Projetos Ativos', 
