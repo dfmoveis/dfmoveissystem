@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos ALTER COLUMN projetista_id DROP NOT NULL;
