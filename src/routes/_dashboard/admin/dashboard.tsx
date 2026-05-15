@@ -288,8 +288,6 @@ function AdminDashboard() {
           </Card>
         </motion.div>
       </div>
-        </Card>
-      </motion.div>
     </motion.div>
   );
 }
