@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DashboardDemandasRouteImport } from './routes/_dashboard/demandas'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
 import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
 import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardDemandasRoute = DashboardDemandasRouteImport.update({
+  id: '/demandas',
+  path: '/demandas',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAgendaRoute = DashboardAgendaRouteImport.update({
   id: '/agenda',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
+  '/demandas': typeof DashboardDemandasRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
+  '/demandas': typeof DashboardDemandasRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/_dashboard/agenda': typeof DashboardAgendaRoute
+  '/_dashboard/demandas': typeof DashboardDemandasRoute
   '/_dashboard/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/_dashboard/admin/crm': typeof DashboardAdminCrmRoute
   '/_dashboard/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/login'
     | '/agenda'
+    | '/demandas'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/login'
     | '/agenda'
+    | '/demandas'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/login'
     | '/_dashboard/agenda'
+    | '/_dashboard/demandas'
     | '/_dashboard/admin/comissoes'
     | '/_dashboard/admin/crm'
     | '/_dashboard/admin/dashboard'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_dashboard/demandas': {
+      id: '/_dashboard/demandas'
+      path: '/demandas'
+      fullPath: '/demandas'
+      preLoaderRoute: typeof DashboardDemandasRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/agenda': {
       id: '/_dashboard/agenda'
@@ -267,6 +286,7 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardAgendaRoute: typeof DashboardAgendaRoute
+  DashboardDemandasRoute: typeof DashboardDemandasRoute
   DashboardAdminComissoesRoute: typeof DashboardAdminComissoesRoute
   DashboardAdminCrmRoute: typeof DashboardAdminCrmRoute
   DashboardAdminDashboardRoute: typeof DashboardAdminDashboardRoute
@@ -278,6 +298,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgendaRoute: DashboardAgendaRoute,
+  DashboardDemandasRoute: DashboardDemandasRoute,
   DashboardAdminComissoesRoute: DashboardAdminComissoesRoute,
   DashboardAdminCrmRoute: DashboardAdminCrmRoute,
   DashboardAdminDashboardRoute: DashboardAdminDashboardRoute,
