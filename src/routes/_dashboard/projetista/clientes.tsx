@@ -81,6 +81,7 @@ function ProjetistaClientesPage() {
     data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
     observacoes: '',
+    sem_projetista: false,
   });
 
   const { data: clientes, isLoading } = useQuery({
@@ -149,7 +150,7 @@ function ProjetistaClientesPage() {
       const today = new Date().toISOString().slice(0, 10);
       const payload: any = {
         cliente_id: pendingClient.id,
-        projetista_id: user.id,
+        projetista_id: data.sem_projetista ? null : user.id,
         status: 'PRONTO' as const,
         status_venda: 'EM_NEGOCIACAO' as const,
         data_inicio: data.data_inicio || today,
@@ -165,11 +166,17 @@ function ProjetistaClientesPage() {
         console.error('[projetos] insert error', error);
         throw error;
       }
+      return { semProjetista: data.sem_projetista };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Projeto criado com sucesso!');
-      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '' });
+      queryClient.invalidateQueries({ queryKey: ['demandas-orfas'] });
+      toast.success(
+        res.semProjetista
+          ? 'Projeto criado e enviado para a Fila de Demandas!'
+          : 'Projeto criado com sucesso!',
+      );
+      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
@@ -395,6 +402,20 @@ function ProjetistaClientesPage() {
                 onChange={(e) => setProjectForm({ ...projectForm, observacoes: e.target.value })}
               />
             </div>
+            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40 transition-colors">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={projectForm.sem_projetista}
+                onChange={(e) => setProjectForm({ ...projectForm, sem_projetista: e.target.checked })}
+              />
+              <div className="text-sm">
+                <div className="font-medium">Enviar para a Fila de Demandas</div>
+                <div className="text-xs text-muted-foreground">
+                  Cria sem projetista atribuído. Qualquer projetista poderá assumir na aba Demandas.
+                </div>
+              </div>
+            </label>
           </div>
           <DialogFooter>
             <Button onClick={handleSaveProject} disabled={createProject.isPending}>

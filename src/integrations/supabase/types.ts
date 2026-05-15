@@ -166,7 +166,7 @@ export type Database = {
           nome: string | null
           observacoes: string | null
           prazo_termino: string
-          projetista_id: string
+          projetista_id: string | null
           status: Database["public"]["Enums"]["project_status"]
           status_venda: Database["public"]["Enums"]["sale_status"]
           valor_venda: number | null
@@ -182,7 +182,7 @@ export type Database = {
           nome?: string | null
           observacoes?: string | null
           prazo_termino: string
-          projetista_id: string
+          projetista_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
           valor_venda?: number | null
@@ -198,7 +198,7 @@ export type Database = {
           nome?: string | null
           observacoes?: string | null
           prazo_termino?: string
-          projetista_id?: string
+          projetista_id?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           status_venda?: Database["public"]["Enums"]["sale_status"]
           valor_venda?: number | null

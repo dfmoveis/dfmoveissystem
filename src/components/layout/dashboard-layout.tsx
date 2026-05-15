@@ -11,7 +11,8 @@ import {
   LogOut,
   Menu,
   ChevronLeft,
-  CalendarDays
+  CalendarDays,
+  Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/hooks/use-auth';
@@ -58,6 +59,7 @@ export function DashboardLayout() {
     { title: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
     { title: 'Equipe', icon: Users, to: '/admin/equipe' },
     { title: 'Clientes', icon: UserSquare2, to: '/projetista/clientes' },
+    { title: 'Demandas', icon: Inbox, to: '/demandas' },
     { title: 'CRM (Pipeline)', icon: Briefcase, to: '/admin/crm' },
     { title: 'Agenda', icon: CalendarDays, to: '/agenda' },
     { title: 'Comissões', icon: DollarSign, to: '/admin/comissoes' },
@@ -66,6 +68,7 @@ export function DashboardLayout() {
 
   const projetistaLinks = [
     { title: 'Meus Projetos', icon: Briefcase, to: '/projetista/dashboard' },
+    { title: 'Demandas', icon: Inbox, to: '/demandas' },
     { title: 'Clientes', icon: UserSquare2, to: '/projetista/clientes' },
     { title: 'Agenda', icon: CalendarDays, to: '/agenda' },
     { title: 'Perfil', icon: UserSquare2, to: '/projetista/perfil' },
