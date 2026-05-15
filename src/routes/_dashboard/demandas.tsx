@@ -47,7 +47,7 @@ function DemandasPage() {
       if (!user?.id) throw new Error('Sessão inválida.');
       const { error } = await supabase
         .from('projetos')
-        .update({ projetista_id: user.id })
+        .update({ projetista_id: user.id, status: 'EM_EXECUCAO', estagio_andamento: 'Início' })
         .eq('id', projetoId)
         .is('projetista_id', null); // garante que ninguém pegou antes
       if (error) throw error;
