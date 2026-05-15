@@ -39,20 +39,20 @@ export function DashboardLayout() {
   const { user, role, setRole, setUser, logout } = useAuthStore();
   const { data: team } = useTeam();
 
-  // Carrega o admin real do banco (projetos.projetista_id e agendamentos.criado_por
-  // têm FK pra users(id); um id fake quebra os inserts).
-  const { data: adminUser } = useQuery({
-    queryKey: ['admin-user'],
+  // Carrega os dados atualizados do usuário logado diretamente do banco
+  const { data: profileData } = useQuery({
+    queryKey: ['user-profile', user?.id],
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('role', 'ADMIN')
-        .limit(1)
+        .eq('id', user.id)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
+    enabled: !!user?.id,
   });
 
   const adminLinks = [
