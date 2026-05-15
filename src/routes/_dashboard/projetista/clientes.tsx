@@ -163,6 +163,7 @@ function ProjetistaClientesPage() {
         nome: data.nome.trim() || null,
         fonte: data.fonte || null,
         nome_arquiteto: (data.fonte === 'ARQUITETO' || data.fonte === 'INDICACAO') ? data.nome_arquiteto : null,
+        rt_arquiteto: (data.fonte === 'ARQUITETO' || data.fonte === 'INDICACAO') ? (data.rt_arquiteto ? parseFloat(data.rt_arquiteto) : null) : null,
       };
       console.log('[projetos] inserting', payload);
       const { error } = await supabase.from('projetos').insert([payload]);
