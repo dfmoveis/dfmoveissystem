@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/sidebar';
 
 export function DashboardLayout() {
-  const { user, role, setRole, setUser } = useAuthStore();
+  const { user, role, setRole, setUser, logout } = useAuthStore();
   const { data: team } = useTeam();
 
   // Carrega o admin real do banco (projetos.projetista_id e agendamentos.criado_por
