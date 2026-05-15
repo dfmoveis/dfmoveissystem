@@ -6,11 +6,9 @@ interface AuthState {
   hydrated: boolean;
   user: User | null;
   role: UserRole;
-  deferredPrompt: any;
   setHydrated: (hydrated: boolean) => void;
   setRole: (role: UserRole) => void;
   setUser: (user: User | null) => void;
-  setDeferredPrompt: (prompt: any) => void;
   logout: () => void;
 }
 
@@ -20,17 +18,15 @@ export const useAuthStore = create<AuthState>()(
       hydrated: false,
       user: null,
       role: 'PROJETISTA',
-      deferredPrompt: null,
       setHydrated: (hydrated) => set({ hydrated }),
       setRole: (role) => set({ role }),
       setUser: (user) => set({ user }),
-      setDeferredPrompt: (deferredPrompt) => set({ deferredPrompt }),
-      logout: () => set({ user: null, role: 'PROJETISTA', deferredPrompt: null }),
+      logout: () => set({ user: null, role: 'PROJETISTA' }),
     }),
     {
       name: 'df-auth-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ user, role }) => ({ user, role }),
+      partialize: (state) => ({ user: state.user, role: state.role }),
       onRehydrateStorage: () => (state, error) => {
         if (!error) {
           state?.setHydrated(true);
