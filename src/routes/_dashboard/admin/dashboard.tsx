@@ -111,9 +111,7 @@ function AdminDashboard() {
                 <div className="text-2xl font-bold truncate max-w-full">
                   {kpi.isCurrency 
                     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(kpi.value)
-                    : kpi.isPercent
-                      ? `${kpi.value.toFixed(1)}%`
-                      : kpi.value
+                    : kpi.value
                   }
                 </div>
                 <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
@@ -215,49 +213,81 @@ function AdminDashboard() {
         </motion.div>
       </div>
 
-      <motion.div variants={item}>
-        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm overflow-hidden">
-          <CardHeader className="border-b bg-muted/30">
-            <CardTitle className="text-lg font-semibold">Projetos Recentes</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="relative w-full overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/10 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">
-                    <th className="h-12 px-6 text-left align-middle font-bold">Cliente</th>
-                    <th className="h-12 px-6 text-left align-middle font-bold">Projetista</th>
-                    <th className="h-12 px-6 text-left align-middle font-bold">Status</th>
-                    <th className="h-12 px-6 text-right align-middle font-bold">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {stats?.projetosRecentes.map((projeto) => (
-                    <tr key={projeto.id} className="hover:bg-muted/20 transition-colors group">
-                      <td className="px-6 py-4 align-middle">
-                        <div className="font-semibold text-foreground">{projeto.cliente?.nome}</div>
-                        <div className="text-[10px] text-muted-foreground">REF: {projeto.id.slice(0, 8)}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle text-muted-foreground">{projeto.projetista?.nome}</td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-tighter ${
-                          projeto.status === 'EM_EXECUCAO' ? 'bg-blue-100/50 text-blue-700' :
-                          projeto.status === 'ATRASADO' ? 'bg-red-100/50 text-red-700' :
-                          projeto.status === 'FINALIZADO' ? 'bg-green-100/50 text-green-700' :
-                          'bg-gray-100/50 text-gray-700'
-                        }`}>
-                          {projeto.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle text-right font-mono font-bold text-foreground">
-                        {projeto.valor_venda ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(projeto.valor_venda)) : '-'}
-                      </td>
+      <div className="grid gap-6 md:grid-cols-2">
+        <motion.div variants={item}>
+          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-primary" />
+                Motivos de Venda Perdida
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.motivosPerda} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                  <XAxis type="number" fontSize={12} hide />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    fontSize={12} 
+                    width={100}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={item}>
+           <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm overflow-hidden h-full">
+            <CardHeader className="border-b bg-muted/30">
+              <CardTitle className="text-lg font-semibold">Projetos Recentes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="relative w-full overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/10 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">
+                      <th className="h-12 px-6 text-left align-middle font-bold">Cliente</th>
+                      <th className="h-12 px-6 text-left align-middle font-bold">Status</th>
+                      <th className="h-12 px-6 text-right align-middle font-bold">Valor</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {stats?.projetosRecentes.map((projeto: any) => (
+                      <tr key={projeto.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-6 py-4 align-middle">
+                          <div className="font-semibold text-foreground truncate max-w-[120px]">{projeto.cliente?.nome}</div>
+                        </td>
+                        <td className="px-6 py-4 align-middle">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            projeto.status === 'EM_EXECUCAO' ? 'bg-blue-100/50 text-blue-700' :
+                            projeto.status === 'ATRASADO' ? 'bg-red-100/50 text-red-700' :
+                            projeto.status === 'FINALIZADO' ? 'bg-green-100/50 text-green-700' :
+                            'bg-gray-100/50 text-gray-700'
+                          }`}>
+                            {projeto.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 align-middle text-right font-mono text-xs">
+                          {projeto.valor_venda ? `R$${(projeto.valor_venda/1000).toFixed(1)}k` : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
         </Card>
       </motion.div>
     </motion.div>
