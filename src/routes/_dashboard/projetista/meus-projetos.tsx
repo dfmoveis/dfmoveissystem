@@ -415,10 +415,11 @@ function DetalhesProjeto({ projeto, onBack }: { projeto: ProjetoRow, onBack: () 
 
   const addAnotacao = useMutation({
     mutationFn: async (text: string) => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
       const { error } = await supabase.from('anotacoes_projeto').insert({
         projeto_id: projeto.id,
-        autor_id: user?.id,
-        autor_nome: user?.nome || 'Projetista',
+        autor_id: user.id,
+        autor_nome: user.nome || 'Projetista',
         conteudo: text
       });
       if (error) throw error;
