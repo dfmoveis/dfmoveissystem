@@ -495,23 +495,11 @@ function ProjetistaClientesPage() {
                                 </Select>
                               );
                             }
-                            // Projetista: botão "Assumir Cliente"
+                            // Projetista: cliente sem dono — apenas indicador
                             return (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  assignProjetista.mutate({
-                                    clienteId: c.id,
-                                    projetistaId: user!.id,
-                                  })
-                                }
-                                disabled={assignProjetista.isPending}
-                                className="h-8"
-                              >
-                                <Hand className="h-3 w-3 mr-1" />
-                                Assumir Cliente
-                              </Button>
+                              <Badge variant="outline" className="h-8 px-3 text-muted-foreground">
+                                Em aberto
+                              </Badge>
                             );
                           }
 
