@@ -110,7 +110,7 @@ function AdminDashboard() {
         <p className="text-muted-foreground">Visão geral do desempenho da DF Móveis Planejados.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {kpis.map((kpi) => (
           <motion.div key={kpi.title} variants={item}>
             <Card className="overflow-hidden border-none shadow-md bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">
