@@ -153,23 +153,24 @@ export function DashboardLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {deferredPrompt && (
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton 
-                        onClick={handleInstallClick}
-                        className="w-full justify-start gap-3 text-primary font-semibold animate-pulse"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span>Instalar Aplicativo</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      onClick={handleInstallClick}
+                      className={cn(
+                        "w-full justify-start gap-3 text-primary font-semibold transition-all",
+                        deferredPrompt ? "flex animate-pulse" : "hidden"
+                      )}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Instalar Aplicativo</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-border">
             <div className="flex items-center gap-3 px-2 py-1">
