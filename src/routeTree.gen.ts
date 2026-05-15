@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardDemandasRouteImport } from './routes/_dashboard/demandas'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
 import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
+import { Route as DashboardProjetistaMeusProjetosRouteImport } from './routes/_dashboard/projetista/meus-projetos'
 import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
 import { Route as DashboardProjetistaClientesRouteImport } from './routes/_dashboard/projetista/clientes'
 import { Route as DashboardAdminEquipeRouteImport } from './routes/_dashboard/admin/equipe'
@@ -56,6 +57,12 @@ const DashboardProjetistaPerfilRoute =
   DashboardProjetistaPerfilRouteImport.update({
     id: '/projetista/perfil',
     path: '/projetista/perfil',
+    getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardProjetistaMeusProjetosRoute =
+  DashboardProjetistaMeusProjetosRouteImport.update({
+    id: '/projetista/meus-projetos',
+    path: '/projetista/meus-projetos',
     getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardProjetistaDashboardRoute =
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/admin/equipe': typeof DashboardAdminEquipeRoute
   '/projetista/clientes': typeof DashboardProjetistaClientesRoute
   '/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/projetista/meus-projetos': typeof DashboardProjetistaMeusProjetosRoute
   '/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +125,7 @@ export interface FileRoutesByTo {
   '/admin/equipe': typeof DashboardAdminEquipeRoute
   '/projetista/clientes': typeof DashboardProjetistaClientesRoute
   '/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/projetista/meus-projetos': typeof DashboardProjetistaMeusProjetosRoute
   '/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRoutesById {
@@ -133,6 +142,7 @@ export interface FileRoutesById {
   '/_dashboard/admin/equipe': typeof DashboardAdminEquipeRoute
   '/_dashboard/projetista/clientes': typeof DashboardProjetistaClientesRoute
   '/_dashboard/projetista/dashboard': typeof DashboardProjetistaDashboardRoute
+  '/_dashboard/projetista/meus-projetos': typeof DashboardProjetistaMeusProjetosRoute
   '/_dashboard/projetista/perfil': typeof DashboardProjetistaPerfilRoute
 }
 export interface FileRouteTypes {
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/projetista/clientes'
     | '/projetista/dashboard'
+    | '/projetista/meus-projetos'
     | '/projetista/perfil'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/projetista/clientes'
     | '/projetista/dashboard'
+    | '/projetista/meus-projetos'
     | '/projetista/perfil'
   id:
     | '__root__'
@@ -178,6 +190,7 @@ export interface FileRouteTypes {
     | '/_dashboard/admin/equipe'
     | '/_dashboard/projetista/clientes'
     | '/_dashboard/projetista/dashboard'
+    | '/_dashboard/projetista/meus-projetos'
     | '/_dashboard/projetista/perfil'
   fileRoutesById: FileRoutesById
 }
@@ -239,6 +252,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProjetistaPerfilRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/projetista/meus-projetos': {
+      id: '/_dashboard/projetista/meus-projetos'
+      path: '/projetista/meus-projetos'
+      fullPath: '/projetista/meus-projetos'
+      preLoaderRoute: typeof DashboardProjetistaMeusProjetosRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/projetista/dashboard': {
       id: '/_dashboard/projetista/dashboard'
       path: '/projetista/dashboard'
@@ -293,6 +313,7 @@ interface DashboardRouteChildren {
   DashboardAdminEquipeRoute: typeof DashboardAdminEquipeRoute
   DashboardProjetistaClientesRoute: typeof DashboardProjetistaClientesRoute
   DashboardProjetistaDashboardRoute: typeof DashboardProjetistaDashboardRoute
+  DashboardProjetistaMeusProjetosRoute: typeof DashboardProjetistaMeusProjetosRoute
   DashboardProjetistaPerfilRoute: typeof DashboardProjetistaPerfilRoute
 }
 
@@ -305,6 +326,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAdminEquipeRoute: DashboardAdminEquipeRoute,
   DashboardProjetistaClientesRoute: DashboardProjetistaClientesRoute,
   DashboardProjetistaDashboardRoute: DashboardProjetistaDashboardRoute,
+  DashboardProjetistaMeusProjetosRoute: DashboardProjetistaMeusProjetosRoute,
   DashboardProjetistaPerfilRoute: DashboardProjetistaPerfilRoute,
 }
 
@@ -321,3 +343,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
