@@ -11,7 +11,8 @@ import {
   LogOut,
   Menu,
   ChevronLeft,
-  CalendarDays
+  CalendarDays,
+  Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/hooks/use-auth';
