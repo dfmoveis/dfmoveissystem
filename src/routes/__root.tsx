@@ -81,8 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Sistema de Gestão de Projetos e Vendas" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "theme-color", content: "#1e293b" },
     ],
     links: [
+      {
+        rel: "manifest",
+        href: "/manifest.json",
+      },
       {
         rel: "icon",
         type: "image/png",
@@ -117,6 +122,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed: ', err));
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
