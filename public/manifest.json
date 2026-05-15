@@ -8,10 +8,10 @@
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778783898939_luewqy_8.png",
+      "src": "https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/75047b19-7565-42ec-a09c-32367503da0f/logo-df-pwa.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
