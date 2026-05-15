@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/sidebar';
 
 export function DashboardLayout() {
-  const { user, role, setRole, setUser } = useAuthStore();
+  const { user, role, setRole, setUser, logout } = useAuthStore();
   const { data: team } = useTeam();
 
   // Carrega o admin real do banco (projetos.projetista_id e agendamentos.criado_por
@@ -85,10 +85,10 @@ export function DashboardLayout() {
 
   // Auto-corrige sessão admin com id inválido (legado do localStorage).
   React.useEffect(() => {
-    if (role === 'ADMIN' && adminUser && user?.id !== adminUser.id) {
+    if (role === 'ADMIN' && adminUser && user && user.id !== adminUser.id) {
       setUser({ ...adminUser, avatar_url: adminUser.avatar_url ?? undefined, created_at: adminUser.created_at ?? new Date().toISOString() } as any);
     }
-  }, [role, adminUser, user?.id, setUser]);
+  }, [role, adminUser, user, setUser]);
 
   const currentLinks = role === 'ADMIN' ? adminLinks : projetistaLinks;
 
@@ -149,8 +149,9 @@ export function DashboardLayout() {
                 size="icon" 
                 className="ml-auto h-8 w-8"
                 onClick={() => {
-                  setUser(null);
-                  window.location.href = "/";
+                  logout();
+                  try { localStorage.removeItem('df-auth-storage'); } catch {}
+                  window.location.href = '/';
                 }}
               >
                 <LogOut className="h-4 w-4" />
