@@ -81,6 +81,7 @@ function ProjetistaClientesPage() {
     data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
     observacoes: '',
+    sem_projetista: false,
   });
 
   const { data: clientes, isLoading } = useQuery({
