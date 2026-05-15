@@ -12,7 +12,8 @@ import {
   Menu,
   ChevronLeft,
   CalendarDays,
-  Inbox
+  Inbox,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/hooks/use-auth';
@@ -38,6 +39,29 @@ import {
 export function DashboardLayout() {
   const { user, role, setRole, setUser, logout } = useAuthStore();
   const { data: team } = useTeam();
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   // Carrega os dados atualizados do usuário logado diretamente do banco
   const { data: profileData } = useQuery({
@@ -129,6 +153,23 @@ export function DashboardLayout() {
               </SidebarGroupContent>
             </SidebarGroup>
 
+            {deferredPrompt && (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton 
+                        onClick={handleInstallClick}
+                        className="w-full justify-start gap-3 text-primary font-semibold animate-pulse"
+                      >
+                        <Download className="h-4 w-4" />
+                        <span>Instalar Aplicativo</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-border">
             <div className="flex items-center gap-3 px-2 py-1">
