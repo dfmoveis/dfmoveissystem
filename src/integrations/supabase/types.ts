@@ -160,6 +160,7 @@ export type Database = {
           cliente_id: string
           created_at: string | null
           data_inicio: string
+          estagio_andamento: string
           fonte: string | null
           forma_pagamento: string | null
           id: string
@@ -176,6 +177,7 @@ export type Database = {
           cliente_id: string
           created_at?: string | null
           data_inicio: string
+          estagio_andamento?: string
           fonte?: string | null
           forma_pagamento?: string | null
           id?: string
@@ -192,6 +194,7 @@ export type Database = {
           cliente_id?: string
           created_at?: string | null
           data_inicio?: string
+          estagio_andamento?: string
           fonte?: string | null
           forma_pagamento?: string | null
           id?: string
