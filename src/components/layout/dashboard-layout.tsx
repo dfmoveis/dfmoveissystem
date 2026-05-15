@@ -149,8 +149,9 @@ export function DashboardLayout() {
                 size="icon" 
                 className="ml-auto h-8 w-8"
                 onClick={() => {
-                  setUser(null);
-                  window.location.href = "/";
+                  logout();
+                  try { localStorage.removeItem('df-auth-storage'); } catch {}
+                  window.location.href = '/';
                 }}
               >
                 <LogOut className="h-4 w-4" />
