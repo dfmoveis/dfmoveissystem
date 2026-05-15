@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useAuthStore } from '@/hooks/use-auth';
+import { usePWAInstall } from '@/hooks/use-pwa-install';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,28 +15,12 @@ export const Route = createFileRoute('/_dashboard/projetista/perfil')({
 });
 
 function PerfilPage() {
-  const { user, setUser, deferredPrompt, setDeferredPrompt } = useAuthStore();
+  const { user, setUser } = useAuthStore();
+  const { isInstallable, isAppInstalled, handleInstallClick } = usePWAInstall();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [nome, setNome] = useState(user?.nome || '');
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useState(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsAppInstalled(true);
-    }
-  });
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setIsAppInstalled(true);
-    }
-  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -154,20 +139,17 @@ function PerfilPage() {
                   <Smartphone className="h-4 w-4" />
                   <span>Aplicativo Instalado</span>
                 </div>
-              ) : deferredPrompt ? (
+              ) : isInstallable ? (
                 <Button 
-                  variant="outline" 
-                  className="w-full justify-start gap-2 border-primary text-primary hover:bg-primary/5"
+                  variant="default" 
+                  size="lg"
+                  className="w-full justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
                   onClick={handleInstallClick}
                 >
-                  <Download className="h-4 w-4" />
-                  <span>Instalar Aplicativo</span>
+                  <Download className="h-5 w-5" />
+                  <span>Instalar Aplicativo no PC / Celular</span>
                 </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground italic text-center">
-                  O aplicativo já está instalado ou seu navegador não suporta instalação direta.
-                </p>
-              )}
+              ) : null}
             </div>
           </CardContent>
         </Card>
