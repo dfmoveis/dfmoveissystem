@@ -22,15 +22,27 @@ export function useAdminStats() {
       if (uError) throw uError;
 
       // Calculate KPIs
-      const totalVendas = (projetos as Projeto[])
+      const totalVendas = (projetos as any[])
         .filter(p => p.status_venda === 'VENDEU')
         .reduce((acc, p) => acc + (Number(p.valor_venda) || 0), 0);
 
-      const projetosExecucao = (projetos as Projeto[])
+      const totalEntradas = (projetos as any[])
+        .filter(p => p.status_venda === 'VENDEU')
+        .reduce((acc, p) => acc + (Number(p.valor_entrada) || 0), 0);
+
+      const totalComissoes = (projetos as any[])
+        .filter(p => p.status_venda === 'VENDEU')
+        .reduce((acc, p) => {
+          const valor = Number(p.valor_venda) || 0;
+          const perc = Number(p.percentual_comissao) || 0;
+          return acc + (valor * (perc / 100));
+        }, 0);
+
+      const projetosExecucao = (projetos as any[])
         .filter(p => p.status === 'EM_EXECUCAO').length;
 
-      const totalLeads = (projetos as Projeto[]).length;
-      const totalVendasCount = (projetos as Projeto[])
+      const totalLeads = (projetos as any[]).length;
+      const totalVendasCount = (projetos as any[])
         .filter(p => p.status_venda === 'VENDEU').length;
       
       const taxaConversao = totalLeads > 0 ? (totalVendasCount / totalLeads) * 100 : 0;
@@ -50,13 +62,24 @@ export function useAdminStats() {
         return { name: u.nome, total: vendas };
       });
 
+      const motivosPerda = [
+        { name: 'Achou caro', value: (projetos as any[]).filter(p => p.motivo_perda === 'Achou caro').length },
+        { name: 'Concorrência', value: (projetos as any[]).filter(p => p.motivo_perda === 'Concorrência').length },
+        { name: 'Desistiu', value: (projetos as any[]).filter(p => p.motivo_perda === 'Desistiu').length },
+        { name: 'Prazo', value: (projetos as any[]).filter(p => p.motivo_perda === 'Prazo').length },
+        { name: 'Outros', value: (projetos as any[]).filter(p => p.motivo_perda && !['Achou caro', 'Concorrência', 'Desistiu', 'Prazo'].includes(p.motivo_perda)).length },
+      ].filter(d => d.value > 0);
+
       return {
         totalVendas,
+        totalEntradas,
+        totalComissoes,
         projetosExecucao,
         taxaConversao,
         statusData,
         vendasPorProjetista,
-        projetosRecentes: (projetos as Projeto[]).slice(0, 5),
+        motivosPerda,
+        projetosRecentes: (projetos as any[]).slice(0, 5),
       };
     },
   });
