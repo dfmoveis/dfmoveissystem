@@ -26,7 +26,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'df-auth-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ user, role }),
+      partialize: (state) => ({ user: state.user, role: state.role }),
       onRehydrateStorage: () => (state, error) => {
         if (!error) {
           state?.setHydrated(true);
