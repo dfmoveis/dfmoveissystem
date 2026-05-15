@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Mail, Calendar, Shield, Camera, Loader2 } from 'lucide-react';
+import { User, Mail, Calendar, Shield, Camera, Loader2, Download, Smartphone } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,11 +14,28 @@ export const Route = createFileRoute('/_dashboard/projetista/perfil')({
 });
 
 function PerfilPage() {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, deferredPrompt, setDeferredPrompt } = useAuthStore();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [nome, setNome] = useState(user?.nome || '');
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useState(() => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+    }
+  });
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsAppInstalled(true);
+    }
+  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -130,6 +147,27 @@ function PerfilPage() {
             <div className="flex items-center gap-3 text-sm">
               <Shield className="h-4 w-4 text-muted-foreground" />
               <span>Acesso: {user?.role}</span>
+            </div>
+            <div className="pt-4 border-t mt-4">
+              {isAppInstalled ? (
+                <div className="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 p-3 rounded-lg border border-green-100">
+                  <Smartphone className="h-4 w-4" />
+                  <span>Aplicativo Instalado</span>
+                </div>
+              ) : deferredPrompt ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2 border-primary text-primary hover:bg-primary/5"
+                  onClick={handleInstallClick}
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Instalar Aplicativo</span>
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground italic text-center">
+                  O aplicativo já está instalado ou seu navegador não suporta instalação direta.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
