@@ -150,7 +150,7 @@ function ProjetistaClientesPage() {
       const today = new Date().toISOString().slice(0, 10);
       const payload: any = {
         cliente_id: pendingClient.id,
-        projetista_id: user.id,
+        projetista_id: data.sem_projetista ? null : user.id,
         status: 'PRONTO' as const,
         status_venda: 'EM_NEGOCIACAO' as const,
         data_inicio: data.data_inicio || today,
@@ -166,11 +166,17 @@ function ProjetistaClientesPage() {
         console.error('[projetos] insert error', error);
         throw error;
       }
+      return { semProjetista: data.sem_projetista };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Projeto criado com sucesso!');
-      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '' });
+      queryClient.invalidateQueries({ queryKey: ['demandas-orfas'] });
+      toast.success(
+        res.semProjetista
+          ? 'Projeto criado e enviado para a Fila de Demandas!'
+          : 'Projeto criado com sucesso!',
+      );
+      setProjectForm({ nome: '', fonte: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
