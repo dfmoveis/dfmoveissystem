@@ -82,11 +82,10 @@ function MeusProjetosPage() {
 
   const concluir = useMutation({
     mutationFn: async ({ id, valor }: { id: string; valor: number | null }) => {
-      const update: Record<string, any> = { status: 'FINALIZADO', estagio_andamento: 'Fim' };
-      if (valor !== null && !Number.isNaN(valor) && valor > 0) {
-        update.valor_venda = valor;
-        update.status_venda = 'VENDEU';
-      }
+      const hasVenda = valor !== null && !Number.isNaN(valor) && valor > 0;
+      const update = hasVenda
+        ? { status: 'FINALIZADO' as const, estagio_andamento: 'Fim', valor_venda: valor!, status_venda: 'VENDEU' as const }
+        : { status: 'FINALIZADO' as const, estagio_andamento: 'Fim' };
       const { error } = await supabase.from('projetos').update(update).eq('id', id);
       if (error) throw error;
     },
