@@ -79,6 +79,7 @@ function ProjetistaClientesPage() {
     nome: '',
     fonte: '',
     nome_arquiteto: '',
+    rt_arquiteto: '',
     valor_venda: '',
     data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
