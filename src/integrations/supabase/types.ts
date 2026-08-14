@@ -335,7 +335,13 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      import_client_spreadsheet: {
+        Args: {
+          p_importing_user_id: string;
+          p_rows: Json;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       project_status:
