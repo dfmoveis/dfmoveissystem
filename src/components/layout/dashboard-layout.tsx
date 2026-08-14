@@ -1,4 +1,6 @@
 import {
+  ArrowRight,
+  Bell,
   BriefcaseBusiness,
   CalendarDays,
   CircleDollarSign,
@@ -8,13 +10,22 @@ import {
   Plus,
   Route as RouteIcon,
   ShieldCheck,
+  UserRoundCheck,
   UsersRound,
 } from "lucide-react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import logoDF from "@/assets/logo-df.png";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +41,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuthStore, validateStoredAccess } from "@/hooks/use-auth";
+import { useAdminApprovals } from "@/hooks/use-admin-approvals";
 import { initials } from "@/lib/project-utils";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -65,6 +77,8 @@ const designerLinks = [
 
 export function DashboardLayout() {
   const { user, role, logout } = useAuthStore();
+  const { items: approvalItems, pendingCount } = useAdminApprovals();
+  const [approvalPopupOpen, setApprovalPopupOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const links = role === "ADMIN" ? adminLinks : designerLinks;
   const pageTitle = PAGE_TITLES[pathname] ?? "DF Móveis";
@@ -73,6 +87,50 @@ export function DashboardLayout() {
     day: "2-digit",
     month: "long",
   }).format(new Date());
+  const approvalSignature = useMemo(
+    () =>
+      approvalItems
+        .map((item) => item.id)
+        .sort()
+        .join(","),
+    [approvalItems],
+  );
+
+  useEffect(() => {
+    const defaultTitle = "DF Móveis Planejados";
+    document.title =
+      role === "ADMIN" && pendingCount > 0
+        ? `(${pendingCount}) Aprovações | DF Móveis`
+        : defaultTitle;
+
+    return () => {
+      document.title = defaultTitle;
+    };
+  }, [pendingCount, role]);
+
+  useEffect(() => {
+    if (role !== "ADMIN" || !user?.id) return;
+
+    const storageKey = `df-admin-approval-popup:${user.id}`;
+
+    if (pendingCount === 0) {
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {
+        // The notification still works when browser storage is unavailable.
+      }
+      return;
+    }
+
+    try {
+      if (sessionStorage.getItem(storageKey) === approvalSignature) return;
+      sessionStorage.setItem(storageKey, approvalSignature);
+    } catch {
+      // Show the popup without persistence when browser storage is unavailable.
+    }
+
+    if (pathname !== "/admin/equipe") setApprovalPopupOpen(true);
+  }, [approvalSignature, pathname, pendingCount, role, user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -98,6 +156,7 @@ export function DashboardLayout() {
     logout();
     try {
       localStorage.removeItem("df-auth-storage");
+      if (user?.id) sessionStorage.removeItem(`df-admin-approval-popup:${user.id}`);
     } catch {
       // Storage may be unavailable in private browsing.
     }
@@ -129,21 +188,31 @@ export function DashboardLayout() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="gap-1">
-                  {links.map((link) => (
-                    <SidebarMenuItem key={link.to}>
-                      <SidebarMenuButton
-                        asChild
-                        tooltip={link.title}
-                        className="h-10 rounded-lg text-white/65 hover:bg-white/8 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white"
-                        isActive={pathname === link.to}
-                      >
-                        <Link to={link.to} className="flex items-center gap-3">
-                          <link.icon className="h-[18px] w-[18px]" />
-                          <span className="font-medium">{link.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {links.map((link) => {
+                    const showsApprovalCount =
+                      role === "ADMIN" && link.to === "/admin/equipe" && pendingCount > 0;
+
+                    return (
+                      <SidebarMenuItem key={link.to}>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={link.title}
+                          className="h-10 rounded-lg text-white/65 hover:bg-white/8 hover:text-white data-[active=true]:bg-white/10 data-[active=true]:text-white"
+                          isActive={pathname === link.to}
+                        >
+                          <Link to={link.to} className="flex items-center gap-3">
+                            <link.icon className="h-[18px] w-[18px]" />
+                            <span className="font-medium">{link.title}</span>
+                            {showsApprovalCount && (
+                              <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-[#c92031] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">
+                                {pendingCount > 99 ? "99+" : pendingCount}
+                              </span>
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -202,6 +271,30 @@ export function DashboardLayout() {
               </h1>
               <p className="hidden text-xs capitalize text-slate-500 sm:block">{today}</p>
             </div>
+            {role === "ADMIN" && (
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-lg text-slate-600 hover:bg-white hover:text-slate-950"
+              >
+                <Link
+                  to="/admin/equipe"
+                  aria-label={
+                    pendingCount > 0
+                      ? `${pendingCount} aprovações pendentes`
+                      : "Nenhuma aprovação pendente"
+                  }
+                >
+                  <Bell className="h-[18px] w-[18px]" />
+                  {pendingCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c92031] px-1 text-[9px] font-bold text-white ring-2 ring-[#f5f4f0]">
+                      {pendingCount > 9 ? "9+" : pendingCount}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
             <Button
               asChild
               className="h-9 rounded-lg bg-[#c92031] px-3 text-xs text-white hover:bg-[#aa1726] md:px-4"
@@ -218,6 +311,71 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      <Dialog open={approvalPopupOpen} onOpenChange={setApprovalPopupOpen}>
+        <DialogContent className="overflow-hidden border-0 bg-white p-0 shadow-2xl sm:max-w-md">
+          <div className="bg-gradient-to-br from-[#1c1e23] to-[#292c33] px-6 pb-6 pt-7 text-white">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#c92031] shadow-lg shadow-black/20">
+              <UserRoundCheck className="h-6 w-6" />
+            </div>
+            <DialogHeader>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#dcc898]">
+                Central de pendências
+              </p>
+              <DialogTitle className="text-xl leading-tight text-white">
+                {pendingCount === 1
+                  ? "Novo cadastro aguardando sua aprovação"
+                  : `${pendingCount} cadastros aguardando sua aprovação`}
+              </DialogTitle>
+              <DialogDescription className="pt-1 text-sm leading-5 text-white/60">
+                Libere ou recuse o acesso antes que a projetista entre no painel.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="space-y-2 px-6 py-5">
+            {approvalItems.slice(0, 3).map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#c92031]/10 text-xs font-bold text-[#c92031]">
+                  {initials(item.title)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="truncate text-xs text-slate-500">{item.description}</p>
+                </div>
+              </div>
+            ))}
+            {pendingCount > 3 && (
+              <p className="px-1 pt-1 text-xs font-medium text-slate-500">
+                E mais {pendingCount - 3} {pendingCount - 3 === 1 ? "cadastro" : "cadastros"}.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:justify-between">
+            <Button
+              variant="ghost"
+              className="text-slate-500"
+              onClick={() => setApprovalPopupOpen(false)}
+            >
+              Ver depois
+            </Button>
+            <Button
+              asChild
+              className="bg-[#c92031] text-white hover:bg-[#aa1726]"
+              onClick={() => setApprovalPopupOpen(false)}
+            >
+              <Link to="/admin/equipe">
+                Ver aprovações
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }

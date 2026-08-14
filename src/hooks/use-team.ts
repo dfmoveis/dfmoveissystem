@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/database";
 import { toast } from "sonner";
 import { useAuthStore } from "@/hooks/use-auth";
+import { ADMIN_APPROVALS_QUERY_KEY } from "@/hooks/use-admin-approvals";
 
 export type MemberStatus = "PENDENTE" | "ATIVO" | "BLOQUEADO";
 
@@ -53,6 +54,7 @@ export function useTeam() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_APPROVALS_QUERY_KEY });
       const label =
         vars.status === "ATIVO"
           ? "aprovado"
@@ -80,6 +82,7 @@ export function useTeam() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_APPROVALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
       queryClient.invalidateQueries({ queryKey: ["clientes-agenda"] });
@@ -108,6 +111,7 @@ export function useTeam() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_APPROVALS_QUERY_KEY });
       toast.success("Projetista adicionada com acesso liberado!");
     },
     onError: (error: Error) => toast.error("Erro ao adicionar projetista: " + error.message),
