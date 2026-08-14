@@ -335,6 +335,24 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_create_designer: {
+        Args: {
+          p_admin_id: string;
+          p_admin_password: string;
+          p_email: string;
+          p_nome: string;
+          p_password: string;
+        };
+        Returns: Json;
+      };
+      admin_delete_designer: {
+        Args: {
+          p_admin_id: string;
+          p_admin_password: string;
+          p_designer_id: string;
+        };
+        Returns: Json;
+      };
       import_client_spreadsheet: {
         Args: {
           p_importing_user_id: string;

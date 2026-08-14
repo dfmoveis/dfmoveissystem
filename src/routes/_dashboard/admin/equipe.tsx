@@ -15,10 +15,23 @@ import {
   Clock3,
   ShieldCheck,
   ShieldX,
+  UserPlus,
+  AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useState } from "react";
 import type { User } from "@/types/database";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/_dashboard/admin/equipe")({
   beforeLoad: async () => {
@@ -41,12 +54,56 @@ interface MemberStats {
   taxaConversao: number;
 }
 
+const EMPTY_DESIGNER_FORM = {
+  nome: "",
+  email: "",
+  password: "",
+  adminPassword: "",
+};
+
 function EquipePage() {
-  const { data: team, isLoading, updateStatus, deleteMember } = useTeam();
+  const { data: team, isLoading, updateStatus, deleteMember, createMember } = useTeam();
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [memberStats, setMemberStats] = useState<MemberStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_DESIGNER_FORM);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteAdminPassword, setDeleteAdminPassword] = useState("");
+
+  const closeDeleteDialog = () => {
+    setDeleteTarget(null);
+    setDeleteConfirmation("");
+    setDeleteAdminPassword("");
+  };
+
+  const handleCreateMember = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await createMember.mutateAsync(createForm);
+      setCreateForm(EMPTY_DESIGNER_FORM);
+      setShowNewPassword(false);
+      setIsCreateOpen(false);
+    } catch {
+      // The mutation already displays a friendly error message.
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!deleteTarget || deleteConfirmation !== "EXCLUIR") return;
+    try {
+      await deleteMember.mutateAsync({
+        id: deleteTarget.id,
+        adminPassword: deleteAdminPassword,
+      });
+      closeDeleteDialog();
+    } catch {
+      // The mutation already displays a friendly error message.
+    }
+  };
 
   const handleShowStats = async (member: User) => {
     setSelectedMember(member);
@@ -86,13 +143,17 @@ function EquipePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Gestão de Equipe</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Aprove novos cadastros e gerencie o acesso dos projetistas.
+            Adicione projetistas, aprove cadastros e gerencie todos os acessos.
           </p>
         </div>
+        <Button className="gap-2" onClick={() => setIsCreateOpen(true)}>
+          <UserPlus className="h-4 w-4" />
+          Adicionar projetista
+        </Button>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -200,10 +261,12 @@ function EquipePage() {
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:bg-destructive/10"
+                          aria-label={`Excluir ${member.nome}`}
+                          title="Excluir projetista e dados"
                           onClick={() => {
-                            if (confirm("Tem certeza que deseja remover este projetista?")) {
-                              deleteMember.mutate(member.id);
-                            }
+                            setDeleteConfirmation("");
+                            setDeleteAdminPassword("");
+                            setDeleteTarget(member);
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -287,6 +350,194 @@ function EquipePage() {
               Fechar
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isCreateOpen}
+        onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) {
+            setCreateForm(EMPTY_DESIGNER_FORM);
+            setShowNewPassword(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={handleCreateMember} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle>Adicionar projetista</DialogTitle>
+              <DialogDescription>
+                A conta será criada pelo administrador e já ficará com o acesso liberado.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="designer-name">Nome completo</Label>
+                <Input
+                  id="designer-name"
+                  value={createForm.nome}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({ ...current, nome: event.target.value }))
+                  }
+                  placeholder="Nome da projetista"
+                  required
+                  minLength={2}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="designer-email">E-mail</Label>
+                <Input
+                  id="designer-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({ ...current, email: event.target.value }))
+                  }
+                  placeholder="projetista@dfmoveis.com"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="designer-password">Senha inicial da projetista</Label>
+                <div className="relative">
+                  <Input
+                    id="designer-password"
+                    type={showNewPassword ? "text" : "password"}
+                    value={createForm.password}
+                    onChange={(event) =>
+                      setCreateForm((current) => ({ ...current, password: event.target.value }))
+                    }
+                    className="pr-10"
+                    autoComplete="new-password"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    onClick={() => setShowNewPassword((current) => !current)}
+                    aria-label={showNewPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">Use pelo menos 6 caracteres.</p>
+              </div>
+              <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <Label htmlFor="create-admin-password">Confirme sua senha de administrador</Label>
+                <Input
+                  id="create-admin-password"
+                  type="password"
+                  value={createForm.adminPassword}
+                  onChange={(event) =>
+                    setCreateForm((current) => ({
+                      ...current,
+                      adminPassword: event.target.value,
+                    }))
+                  }
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={createMember.isPending}>
+                {createMember.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                Criar e liberar acesso
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteMember.isPending) {
+            closeDeleteDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-100 text-red-700">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle>Excluir {deleteTarget?.nome} permanentemente?</DialogTitle>
+            <DialogDescription>
+              Depois da exclusão, este e-mail poderá fazer um cadastro totalmente novo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <p className="font-semibold">Esta ação apaga definitivamente:</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-red-800">
+              <li>o cadastro e o acesso da projetista;</li>
+              <li>os clientes vinculados ao perfil;</li>
+              <li>os projetos, prazos, comissões e anotações;</li>
+              <li>as reuniões e os compromissos ligados ao perfil.</li>
+            </ul>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="delete-confirmation">
+              Digite <strong>EXCLUIR</strong> para confirmar
+            </Label>
+            <Input
+              id="delete-confirmation"
+              value={deleteConfirmation}
+              onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase())}
+              autoComplete="off"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="delete-admin-password">Senha do administrador</Label>
+            <Input
+              id="delete-admin-password"
+              type="password"
+              value={deleteAdminPassword}
+              onChange={(event) => setDeleteAdminPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteMember.isPending}
+              onClick={closeDeleteDialog}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                deleteMember.isPending ||
+                deleteConfirmation !== "EXCLUIR" ||
+                !deleteAdminPassword
+              }
+              onClick={handleDeleteMember}
+            >
+              {deleteMember.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Excluir tudo permanentemente
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

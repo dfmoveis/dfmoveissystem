@@ -6,6 +6,18 @@ import { useAuthStore } from "@/hooks/use-auth";
 
 export type MemberStatus = "PENDENTE" | "ATIVO" | "BLOQUEADO";
 
+export interface CreateDesignerInput {
+  nome: string;
+  email: string;
+  password: string;
+  adminPassword: string;
+}
+
+export interface DeleteDesignerInput {
+  id: string;
+  adminPassword: string;
+}
+
 export function useTeam() {
   const queryClient = useQueryClient();
   const administrator = useAuthStore((state) => state.user);
@@ -53,19 +65,53 @@ export function useTeam() {
   });
 
   const deleteMember = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, adminPassword }: DeleteDesignerInput) => {
       if (!administrator?.id || administrator.role !== "ADMIN") {
         throw new Error("Somente o superusuário pode remover usuários.");
       }
-      const { error } = await supabase.from("users").delete().eq("id", id).eq("role", "PROJETISTA");
+
+      const { data, error } = await supabase.rpc("admin_delete_designer", {
+        p_admin_id: administrator.id,
+        p_admin_password: adminPassword,
+        p_designer_id: id,
+      });
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
-      toast.success("Membro removido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes-agenda"] });
+      queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["distribution-projects"] });
+      toast.success("Projetista e todos os dados vinculados foram removidos.");
     },
     onError: (error: Error) => toast.error("Erro ao remover usuário: " + error.message),
   });
 
-  return { ...query, updateStatus, deleteMember };
+  const createMember = useMutation({
+    mutationFn: async ({ nome, email, password, adminPassword }: CreateDesignerInput) => {
+      if (!administrator?.id || administrator.role !== "ADMIN") {
+        throw new Error("Somente o superusuário pode adicionar projetistas.");
+      }
+
+      const { data, error } = await supabase.rpc("admin_create_designer", {
+        p_admin_id: administrator.id,
+        p_admin_password: adminPassword,
+        p_nome: nome,
+        p_email: email,
+        p_password: password,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      toast.success("Projetista adicionada com acesso liberado!");
+    },
+    onError: (error: Error) => toast.error("Erro ao adicionar projetista: " + error.message),
+  });
+
+  return { ...query, updateStatus, deleteMember, createMember };
 }
