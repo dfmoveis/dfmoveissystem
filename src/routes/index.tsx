@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ensureAuthStoreHydrated, useAuthStore } from "@/hooks/use-auth";
+import { ensureAuthStoreHydrated, useAuthStore, validateStoredAccess } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoDf from "@/assets/logo-df.png";
+import type { UserStatus } from "@/types/database";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -17,10 +18,20 @@ export const Route = createFileRoute("/")({
       return;
     }
 
-    const { user, role } = await ensureAuthStoreHydrated();
-    if (user) {
+    const { user } = await ensureAuthStoreHydrated();
+    if (!user) return;
+
+    const access = await validateStoredAccess();
+    if (access.authorized && access.account) {
       throw redirect({
-        to: role === "ADMIN" ? "/admin/dashboard" : "/projetista/dashboard",
+        to: access.account.role === "ADMIN" ? "/admin/dashboard" : "/projetista/dashboard",
+      });
+    }
+
+    if (access.account && ["PENDING", "BLOCKED"].includes(access.reason)) {
+      throw redirect({
+        to: "/aguardando-aprovacao",
+        search: { email: access.account.email },
       });
     }
   },
@@ -44,39 +55,38 @@ export function LoginPage() {
     try {
       const { data: users, error } = await supabase
         .from("users")
-        .select("*")
-        .eq("email", email)
-        .eq("password", password);
+        .select("id, nome, email, role, status, avatar_url, created_at")
+        .eq("email", email.trim().toLowerCase())
+        .eq("password", password)
+        .maybeSingle();
 
       if (error) throw error;
 
-      if (users && users.length > 0) {
-        const foundUser = users[0];
+      if (users) {
+        const foundUser = users;
 
-        if (foundUser.role !== "ADMIN") {
-          if (foundUser.status === "PENDENTE") {
-            const msg = "Sua conta está aguardando aprovação do Administrador.";
-            setErrorMessage(msg);
-            toast.error(msg);
-            return;
-          }
-          if (foundUser.status === "BLOQUEADO") {
-            const msg = "Seu acesso foi bloqueado. Contate o Administrador.";
-            setErrorMessage(msg);
-            toast.error(msg);
-            return;
-          }
-          if (foundUser.status !== "ATIVO") {
-            const msg = "Sua conta não está ativa. Contate o Administrador.";
-            setErrorMessage(msg);
-            toast.error(msg);
-            return;
-          }
+        if (foundUser.status === "PENDENTE" || foundUser.status === "BLOQUEADO") {
+          navigate({
+            to: "/aguardando-aprovacao",
+            search: { email: foundUser.email },
+          });
+          return;
+        }
+
+        if (foundUser.status !== "ATIVO") {
+          const msg = "Sua conta ainda não possui autorização da administração.";
+          setErrorMessage(msg);
+          toast.error(msg);
+          return;
         }
 
         setRole(foundUser.role);
         setUser({
-          ...foundUser,
+          id: foundUser.id,
+          nome: foundUser.nome,
+          email: foundUser.email,
+          role: foundUser.role,
+          status: foundUser.status as UserStatus,
           avatar_url: foundUser.avatar_url || undefined,
           created_at: foundUser.created_at || new Date().toISOString(),
         });

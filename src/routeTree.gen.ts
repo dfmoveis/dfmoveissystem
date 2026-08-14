@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as AguardandoAprovacaoRouteImport } from './routes/aguardando-aprovacao'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/_dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AguardandoAprovacaoRoute = AguardandoAprovacaoRouteImport.update({
+  id: '/aguardando-aprovacao',
+  path: '/aguardando-aprovacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -100,6 +106,7 @@ const DashboardProjetistaPerfilRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/cadastro': typeof CadastroRoute
   '/login': typeof LoginRoute
   '/_dashboard/agenda': typeof DashboardAgendaRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aguardando-aprovacao'
     | '/cadastro'
     | '/login'
     | '/agenda'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aguardando-aprovacao'
     | '/cadastro'
     | '/login'
     | '/agenda'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_dashboard'
+    | '/aguardando-aprovacao'
     | '/cadastro'
     | '/login'
     | '/_dashboard/agenda'
@@ -197,6 +209,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  AguardandoAprovacaoRoute: typeof AguardandoAprovacaoRoute
   CadastroRoute: typeof CadastroRoute
   LoginRoute: typeof LoginRoute
 }
@@ -215,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aguardando-aprovacao': {
+      id: '/aguardando-aprovacao'
+      path: '/aguardando-aprovacao'
+      fullPath: '/aguardando-aprovacao'
+      preLoaderRoute: typeof AguardandoAprovacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro': {
@@ -337,6 +357,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  AguardandoAprovacaoRoute: AguardandoAprovacaoRoute,
   CadastroRoute: CadastroRoute,
   LoginRoute: LoginRoute,
 }

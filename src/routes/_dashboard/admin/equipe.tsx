@@ -1,68 +1,87 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { ensureAuthStoreHydrated } from '@/hooks/use-auth';
-import { useTeam, type MemberStatus } from '@/hooks/use-team';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, Mail, User as UserIcon, Loader2, Check, Ban } from 'lucide-react';
-import { useState } from 'react';
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { ensureAuthStoreHydrated } from "@/hooks/use-auth";
+import { useTeam, type MemberStatus } from "@/hooks/use-team";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Trash2,
+  Mail,
+  User as UserIcon,
+  Loader2,
+  Check,
+  Ban,
+  Clock3,
+  ShieldCheck,
+  ShieldX,
+} from "lucide-react";
+import { useState } from "react";
+import type { User } from "@/types/database";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export const Route = createFileRoute('/_dashboard/admin/equipe')({
+export const Route = createFileRoute("/_dashboard/admin/equipe")({
   beforeLoad: async () => {
     const { role } = await ensureAuthStoreHydrated();
-    if (role !== 'ADMIN') throw redirect({ to: '/projetista/dashboard' });
+    if (role !== "ADMIN") throw redirect({ to: "/projetista/dashboard" });
   },
   component: EquipePage,
 });
 
 const STATUS_META: Record<MemberStatus, { label: string; className: string }> = {
-  PENDENTE: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' },
-  ATIVO: { label: 'Ativo', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
-  BLOQUEADO: { label: 'Bloqueado', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
+  PENDENTE: { label: "Pendente", className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" },
+  ATIVO: { label: "Ativo", className: "bg-green-100 text-green-800 hover:bg-green-100" },
+  BLOQUEADO: { label: "Bloqueado", className: "bg-red-100 text-red-800 hover:bg-red-100" },
 };
+
+interface MemberStats {
+  totalVendido: number;
+  projetosAtivos: number;
+  totalLeads: number;
+  taxaConversao: number;
+}
 
 function EquipePage() {
   const { data: team, isLoading, updateStatus, deleteMember } = useTeam();
-  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
-  const [memberStats, setMemberStats] = useState<any>(null);
+  const [memberStats, setMemberStats] = useState<MemberStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  const handleShowStats = async (member: any) => {
+  const handleShowStats = async (member: User) => {
     setSelectedMember(member);
     setIsStatsOpen(true);
     setLoadingStats(true);
 
     try {
       const { data: projects, error } = await supabase
-        .from('projetos')
-        .select('*')
-        .eq('projetista_id', member.id);
+        .from("projetos")
+        .select("*")
+        .eq("projetista_id", member.id);
 
       if (error) throw error;
 
       const totalVendido = projects
-        .filter((p) => p.status_venda === 'VENDEU')
+        .filter((p) => p.status_venda === "VENDEU")
         .reduce((acc, p) => acc + (Number(p.valor_venda) || 0), 0);
 
-      const projetosAtivos = projects.filter((p) => p.status === 'EM_EXECUCAO').length;
+      const projetosAtivos = projects.filter((p) => p.status === "EM_EXECUCAO").length;
       const totalLeads = projects.length;
-      const totalVendasCount = projects.filter((p) => p.status_venda === 'VENDEU').length;
+      const totalVendasCount = projects.filter((p) => p.status_venda === "VENDEU").length;
       const taxaConversao = totalLeads > 0 ? (totalVendasCount / totalLeads) * 100 : 0;
 
       setMemberStats({ totalVendido, projetosAtivos, totalLeads, taxaConversao });
     } catch (error) {
-      console.error('Erro ao carregar stats do projetista:', error);
+      console.error("Erro ao carregar stats do projetista:", error);
     } finally {
       setLoadingStats(false);
     }
+  };
+
+  const accessCounts = {
+    pending: team?.filter((member) => member.status === "PENDENTE").length ?? 0,
+    active: team?.filter((member) => member.status === "ATIVO").length ?? 0,
+    blocked: team?.filter((member) => member.status === "BLOQUEADO").length ?? 0,
   };
 
   return (
@@ -76,86 +95,125 @@ function EquipePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="h-32" />
-            </Card>
-          ))
-        ) : (
-          team?.map((member) => {
-            const status = (member.status as MemberStatus) || 'PENDENTE';
-            const meta = STATUS_META[status];
-            return (
-              <Card
-                key={member.id}
-                className="overflow-hidden group hover:border-primary/50 transition-colors"
+      <section className="grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            label: "Aguardando aprovação",
+            value: accessCounts.pending,
+            icon: Clock3,
+            style: "bg-amber-50 text-amber-700",
+          },
+          {
+            label: "Acessos liberados",
+            value: accessCounts.active,
+            icon: ShieldCheck,
+            style: "bg-emerald-50 text-emerald-700",
+          },
+          {
+            label: "Acessos bloqueados",
+            value: accessCounts.blocked,
+            icon: ShieldX,
+            style: "bg-rose-50 text-rose-700",
+          },
+        ].map((item) => (
+          <Card key={item.label} className="workspace-card border-0 shadow-none">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.style}`}
               >
-                <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <UserIcon className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <CardTitle
-                        className="text-lg truncate cursor-pointer hover:text-primary"
-                        onClick={() => handleShowStats(member)}
-                      >
-                        {member.nome}
-                      </CardTitle>
-                      <Badge className={meta.className} variant="secondary">
-                        {meta.label}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground truncate">
-                      <Mail className="mr-1 h-3 w-3" />
-                      {member.email}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap items-center gap-2 mt-2 pt-4 border-t">
-                    {status !== 'ATIVO' && (
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        disabled={updateStatus.isPending}
-                        onClick={() => updateStatus.mutate({ id: member.id, status: 'ATIVO' })}
-                      >
-                        <Check className="mr-1 h-4 w-4" /> Aprovar Acesso
-                      </Button>
-                    )}
-                    {status !== 'BLOQUEADO' && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={updateStatus.isPending}
-                        onClick={() => updateStatus.mutate({ id: member.id, status: 'BLOQUEADO' })}
-                      >
-                        <Ban className="mr-1 h-4 w-4" /> Bloquear Acesso
-                      </Button>
-                    )}
-                    <div className="ml-auto">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm('Tem certeza que deseja remover este projetista?')) {
-                            deleteMember.mutate(member.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
+                <item.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold tracking-tight text-slate-950">{item.value}</p>
+                <p className="text-xs text-slate-500">{item.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="h-32" />
               </Card>
-            );
-          })
-        )}
+            ))
+          : team?.map((member) => {
+              const status = (member.status as MemberStatus) || "PENDENTE";
+              const meta = STATUS_META[status];
+              return (
+                <Card
+                  key={member.id}
+                  className={`overflow-hidden transition-colors hover:border-primary/50 ${
+                    status === "PENDENTE" ? "border-amber-300 bg-amber-50/20" : ""
+                  }`}
+                >
+                  <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <UserIcon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <CardTitle
+                          className="text-lg truncate cursor-pointer hover:text-primary"
+                          onClick={() => handleShowStats(member)}
+                        >
+                          {member.nome}
+                        </CardTitle>
+                        <Badge className={meta.className} variant="secondary">
+                          {meta.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground truncate">
+                        <Mail className="mr-1 h-3 w-3" />
+                        {member.email}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap items-center gap-2 mt-2 pt-4 border-t">
+                      {status !== "ATIVO" && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          disabled={updateStatus.isPending}
+                          onClick={() => updateStatus.mutate({ id: member.id, status: "ATIVO" })}
+                        >
+                          <Check className="mr-1 h-4 w-4" /> Aprovar Acesso
+                        </Button>
+                      )}
+                      {status !== "BLOQUEADO" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={updateStatus.isPending}
+                          onClick={() =>
+                            updateStatus.mutate({ id: member.id, status: "BLOQUEADO" })
+                          }
+                        >
+                          <Ban className="mr-1 h-4 w-4" /> Bloquear Acesso
+                        </Button>
+                      )}
+                      <div className="ml-auto">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Tem certeza que deseja remover este projetista?")) {
+                              deleteMember.mutate(member.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
       </div>
 
       <Dialog open={isStatsOpen} onOpenChange={setIsStatsOpen}>
@@ -172,9 +230,11 @@ function EquipePage() {
             <div className="grid gap-4 py-4 md:grid-cols-2">
               <Card className="bg-muted/30 border-none">
                 <CardContent className="pt-6">
-                  <div className="text-sm font-medium text-muted-foreground uppercase">Total Vendido</div>
+                  <div className="text-sm font-medium text-muted-foreground uppercase">
+                    Total Vendido
+                  </div>
                   <div className="text-2xl font-bold mt-1 text-primary">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
                       memberStats?.totalVendido || 0,
                     )}
                   </div>
@@ -182,7 +242,9 @@ function EquipePage() {
               </Card>
               <Card className="bg-muted/30 border-none">
                 <CardContent className="pt-6">
-                  <div className="text-sm font-medium text-muted-foreground uppercase">Projetos Ativos</div>
+                  <div className="text-sm font-medium text-muted-foreground uppercase">
+                    Projetos Ativos
+                  </div>
                   <div className="text-2xl font-bold mt-1 text-blue-600">
                     {memberStats?.projetosAtivos || 0} Projetos
                   </div>
@@ -190,7 +252,9 @@ function EquipePage() {
               </Card>
               <Card className="bg-muted/30 border-none">
                 <CardContent className="pt-6">
-                  <div className="text-sm font-medium text-muted-foreground uppercase">Taxa de Conversão</div>
+                  <div className="text-sm font-medium text-muted-foreground uppercase">
+                    Taxa de Conversão
+                  </div>
                   <div className="text-2xl font-bold mt-1 text-purple-600">
                     {memberStats?.taxaConversao.toFixed(1) || 0}%
                   </div>
@@ -210,7 +274,7 @@ function EquipePage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Status:</span>
                       <span className="font-medium">
-                        {STATUS_META[(selectedMember?.status as MemberStatus) || 'PENDENTE'].label}
+                        {STATUS_META[(selectedMember?.status as MemberStatus) || "PENDENTE"].label}
                       </span>
                     </div>
                   </div>

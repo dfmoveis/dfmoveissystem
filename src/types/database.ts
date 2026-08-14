@@ -1,19 +1,18 @@
-export type UserRole = 'ADMIN' | 'PROJETISTA';
+export type UserRole = "ADMIN" | "PROJETISTA";
+export type UserStatus = "PENDENTE" | "ATIVO" | "BLOQUEADO";
 export type ProjectStatus =
-  | 'PRONTO'
-  | 'EM_EXECUCAO'
-  | 'PAUSADO'
-  | 'ATRASADO'
-  | 'FINALIZADO'
-  | 'EM_ACOMPANHAMENTO';
-export type SaleStatus = 'EM_NEGOCIACAO' | 'VENDEU' | 'NAO_VENDEU';
+  "PRONTO" | "EM_EXECUCAO" | "PAUSADO" | "ATRASADO" | "FINALIZADO" | "EM_ACOMPANHAMENTO";
+export type SaleStatus = "EM_NEGOCIACAO" | "VENDEU" | "NAO_VENDEU";
 
 export interface User {
   id: string;
   nome: string;
   email: string;
   role: UserRole;
+  status: UserStatus;
   avatar_url?: string;
+  approved_at?: string | null;
+  approved_by?: string | null;
   created_at: string;
 }
 
