@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { ensureAuthStoreHydrated } from '@/hooks/use-auth';
 import { useTeam, type MemberStatus } from '@/hooks/use-team';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,10 @@ import {
 } from '@/components/ui/dialog';
 
 export const Route = createFileRoute('/_dashboard/admin/equipe')({
+  beforeLoad: async () => {
+    const { role } = await ensureAuthStoreHydrated();
+    if (role !== 'ADMIN') throw redirect({ to: '/projetista/dashboard' });
+  },
   component: EquipePage,
 });
 

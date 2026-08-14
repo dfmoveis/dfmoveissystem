@@ -1,5 +1,11 @@
 export type UserRole = 'ADMIN' | 'PROJETISTA';
-export type ProjectStatus = 'PRONTO' | 'EM_EXECUCAO' | 'PAUSADO' | 'ATRASADO' | 'FINALIZADO';
+export type ProjectStatus =
+  | 'PRONTO'
+  | 'EM_EXECUCAO'
+  | 'PAUSADO'
+  | 'ATRASADO'
+  | 'FINALIZADO'
+  | 'EM_ACOMPANHAMENTO';
 export type SaleStatus = 'EM_NEGOCIACAO' | 'VENDEU' | 'NAO_VENDEU';
 
 export interface User {
@@ -17,19 +23,27 @@ export interface Cliente {
   telefone?: string;
   email?: string;
   endereco?: string;
+  projetista_id?: string | null;
   created_at: string;
 }
 
 export interface Projeto {
   id: string;
   cliente_id: string;
-  projetista_id: string;
+  projetista_id: string | null;
   status: ProjectStatus;
   data_inicio: string;
   prazo_termino: string;
   status_venda: SaleStatus;
   valor_venda?: number;
   forma_pagamento?: string;
+  nome?: string | null;
+  fonte?: string | null;
+  nome_arquiteto?: string | null;
+  rt_arquiteto?: number | null;
+  observacoes?: string | null;
+  estagio_andamento?: string | null;
+  motivo_perda?: string | null;
   created_at: string;
   cliente?: Cliente;
   projetista?: User;

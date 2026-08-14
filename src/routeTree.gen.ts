@@ -9,24 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as CadastroRouteImport } from './routes/cadastro'
-import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardDemandasRouteImport } from './routes/_dashboard/demandas'
+import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as CadastroRouteImport } from './routes/cadastro'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
-import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
-import { Route as DashboardProjetistaMeusProjetosRouteImport } from './routes/_dashboard/projetista/meus-projetos'
-import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
-import { Route as DashboardProjetistaClientesRouteImport } from './routes/_dashboard/projetista/clientes'
-import { Route as DashboardAdminEquipeRouteImport } from './routes/_dashboard/admin/equipe'
-import { Route as DashboardAdminDashboardRouteImport } from './routes/_dashboard/admin/dashboard'
-import { Route as DashboardAdminCrmRouteImport } from './routes/_dashboard/admin/crm'
+import { Route as DashboardDemandasRouteImport } from './routes/_dashboard/demandas'
 import { Route as DashboardAdminComissoesRouteImport } from './routes/_dashboard/admin/comissoes'
+import { Route as DashboardAdminCrmRouteImport } from './routes/_dashboard/admin/crm'
+import { Route as DashboardAdminDashboardRouteImport } from './routes/_dashboard/admin/dashboard'
+import { Route as DashboardAdminEquipeRouteImport } from './routes/_dashboard/admin/equipe'
+import { Route as DashboardProjetistaClientesRouteImport } from './routes/_dashboard/projetista/clientes'
+import { Route as DashboardProjetistaDashboardRouteImport } from './routes/_dashboard/projetista/dashboard'
+import { Route as DashboardProjetistaMeusProjetosRouteImport } from './routes/_dashboard/projetista/meus-projetos'
+import { Route as DashboardProjetistaPerfilRouteImport } from './routes/_dashboard/projetista/perfil'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/_dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -34,35 +38,45 @@ const CadastroRoute = CadastroRouteImport.update({
   path: '/cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/_dashboard',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardDemandasRoute = DashboardDemandasRouteImport.update({
-  id: '/demandas',
-  path: '/demandas',
-  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAgendaRoute = DashboardAgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardProjetistaPerfilRoute =
-  DashboardProjetistaPerfilRouteImport.update({
-    id: '/projetista/perfil',
-    path: '/projetista/perfil',
-    getParentRoute: () => DashboardRoute,
-  } as any)
-const DashboardProjetistaMeusProjetosRoute =
-  DashboardProjetistaMeusProjetosRouteImport.update({
-    id: '/projetista/meus-projetos',
-    path: '/projetista/meus-projetos',
+const DashboardDemandasRoute = DashboardDemandasRouteImport.update({
+  id: '/demandas',
+  path: '/demandas',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
+  id: '/admin/comissoes',
+  path: '/admin/comissoes',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminCrmRoute = DashboardAdminCrmRouteImport.update({
+  id: '/admin/crm',
+  path: '/admin/crm',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminDashboardRoute = DashboardAdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminEquipeRoute = DashboardAdminEquipeRouteImport.update({
+  id: '/admin/equipe',
+  path: '/admin/equipe',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProjetistaClientesRoute =
+  DashboardProjetistaClientesRouteImport.update({
+    id: '/projetista/clientes',
+    path: '/projetista/clientes',
     getParentRoute: () => DashboardRoute,
   } as any)
 const DashboardProjetistaDashboardRoute =
@@ -71,32 +85,18 @@ const DashboardProjetistaDashboardRoute =
     path: '/projetista/dashboard',
     getParentRoute: () => DashboardRoute,
   } as any)
-const DashboardProjetistaClientesRoute =
-  DashboardProjetistaClientesRouteImport.update({
-    id: '/projetista/clientes',
-    path: '/projetista/clientes',
+const DashboardProjetistaMeusProjetosRoute =
+  DashboardProjetistaMeusProjetosRouteImport.update({
+    id: '/projetista/meus-projetos',
+    path: '/projetista/meus-projetos',
     getParentRoute: () => DashboardRoute,
   } as any)
-const DashboardAdminEquipeRoute = DashboardAdminEquipeRouteImport.update({
-  id: '/admin/equipe',
-  path: '/admin/equipe',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardAdminDashboardRoute = DashboardAdminDashboardRouteImport.update({
-  id: '/admin/dashboard',
-  path: '/admin/dashboard',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardAdminCrmRoute = DashboardAdminCrmRouteImport.update({
-  id: '/admin/crm',
-  path: '/admin/crm',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
-  id: '/admin/comissoes',
-  path: '/admin/comissoes',
-  getParentRoute: () => DashboardRoute,
-} as any)
+const DashboardProjetistaPerfilRoute =
+  DashboardProjetistaPerfilRouteImport.update({
+    id: '/projetista/perfil',
+    path: '/projetista/perfil',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -203,18 +203,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cadastro': {
-      id: '/cadastro'
-      path: '/cadastro'
-      fullPath: '/cadastro'
-      preLoaderRoute: typeof CadastroRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard': {
@@ -224,19 +217,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_dashboard/demandas': {
-      id: '/_dashboard/demandas'
-      path: '/demandas'
-      fullPath: '/demandas'
-      preLoaderRoute: typeof DashboardDemandasRouteImport
-      parentRoute: typeof DashboardRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_dashboard/agenda': {
       id: '/_dashboard/agenda'
@@ -245,46 +238,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAgendaRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/projetista/perfil': {
-      id: '/_dashboard/projetista/perfil'
-      path: '/projetista/perfil'
-      fullPath: '/projetista/perfil'
-      preLoaderRoute: typeof DashboardProjetistaPerfilRouteImport
+    '/_dashboard/demandas': {
+      id: '/_dashboard/demandas'
+      path: '/demandas'
+      fullPath: '/demandas'
+      preLoaderRoute: typeof DashboardDemandasRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/projetista/meus-projetos': {
-      id: '/_dashboard/projetista/meus-projetos'
-      path: '/projetista/meus-projetos'
-      fullPath: '/projetista/meus-projetos'
-      preLoaderRoute: typeof DashboardProjetistaMeusProjetosRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/projetista/dashboard': {
-      id: '/_dashboard/projetista/dashboard'
-      path: '/projetista/dashboard'
-      fullPath: '/projetista/dashboard'
-      preLoaderRoute: typeof DashboardProjetistaDashboardRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/projetista/clientes': {
-      id: '/_dashboard/projetista/clientes'
-      path: '/projetista/clientes'
-      fullPath: '/projetista/clientes'
-      preLoaderRoute: typeof DashboardProjetistaClientesRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/admin/equipe': {
-      id: '/_dashboard/admin/equipe'
-      path: '/admin/equipe'
-      fullPath: '/admin/equipe'
-      preLoaderRoute: typeof DashboardAdminEquipeRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/admin/dashboard': {
-      id: '/_dashboard/admin/dashboard'
-      path: '/admin/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof DashboardAdminDashboardRouteImport
+    '/_dashboard/admin/comissoes': {
+      id: '/_dashboard/admin/comissoes'
+      path: '/admin/comissoes'
+      fullPath: '/admin/comissoes'
+      preLoaderRoute: typeof DashboardAdminComissoesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/admin/crm': {
@@ -294,11 +259,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAdminCrmRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/admin/comissoes': {
-      id: '/_dashboard/admin/comissoes'
-      path: '/admin/comissoes'
-      fullPath: '/admin/comissoes'
-      preLoaderRoute: typeof DashboardAdminComissoesRouteImport
+    '/_dashboard/admin/dashboard': {
+      id: '/_dashboard/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof DashboardAdminDashboardRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/admin/equipe': {
+      id: '/_dashboard/admin/equipe'
+      path: '/admin/equipe'
+      fullPath: '/admin/equipe'
+      preLoaderRoute: typeof DashboardAdminEquipeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/clientes': {
+      id: '/_dashboard/projetista/clientes'
+      path: '/projetista/clientes'
+      fullPath: '/projetista/clientes'
+      preLoaderRoute: typeof DashboardProjetistaClientesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/dashboard': {
+      id: '/_dashboard/projetista/dashboard'
+      path: '/projetista/dashboard'
+      fullPath: '/projetista/dashboard'
+      preLoaderRoute: typeof DashboardProjetistaDashboardRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/meus-projetos': {
+      id: '/_dashboard/projetista/meus-projetos'
+      path: '/projetista/meus-projetos'
+      fullPath: '/projetista/meus-projetos'
+      preLoaderRoute: typeof DashboardProjetistaMeusProjetosRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/projetista/perfil': {
+      id: '/_dashboard/projetista/perfil'
+      path: '/projetista/perfil'
+      fullPath: '/projetista/perfil'
+      preLoaderRoute: typeof DashboardProjetistaPerfilRouteImport
       parentRoute: typeof DashboardRoute
     }
   }
@@ -343,3 +343,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

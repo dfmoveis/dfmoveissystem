@@ -1,302 +1,296 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Briefcase, 
-  DollarSign, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle,
-  BarChart3,
-  ArrowUpRight
-} from 'lucide-react';
-import { useAuthStore } from '@/hooks/use-auth';
-import { useProjetistaStats } from '@/hooks/use-projetista-data';
-import { motion } from 'framer-motion';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid
-} from 'recharts';
+import { useMemo } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  CalendarDays,
+  CirclePause,
+  Clock3,
+  ContactRound,
+  FolderKanban,
+  Sparkles,
+  UserRoundCheck,
+} from "lucide-react";
 
-export const Route = createFileRoute('/_dashboard/projetista/dashboard')({
-  component: ProjetistaDashboard,
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useAuthStore } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  deadlineState,
+  formatDate,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_STYLES,
+} from "@/lib/project-utils";
+import type { ProjectStatus } from "@/types/database";
+
+export const Route = createFileRoute("/_dashboard/projetista/dashboard")({
+  component: DesignerDashboard,
 });
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-const STATUS_COLORS: Record<string, string> = {
-  'PRONTO': 'bg-gray-100/50 text-gray-700 border-gray-100',
-  'EM_EXECUCAO': 'bg-blue-100/50 text-blue-700 border-blue-100',
-  'PAUSADO': 'bg-yellow-100/50 text-yellow-700 border-yellow-100',
-  'ATRASADO': 'bg-red-100/50 text-red-700 border-red-100',
-  'FINALIZADO': 'bg-green-100/50 text-green-700 border-green-100',
-};
+interface DesignerProject {
+  id: string;
+  nome: string | null;
+  status: ProjectStatus;
+  prazo_termino: string;
+  estagio_andamento: string | null;
+  cliente: { id: string; nome: string; telefone: string | null } | null;
+}
 
-const VENDA_COLORS: Record<string, string> = {
-  'EM_NEGOCIACAO': 'bg-purple-100/50 text-purple-700 border-purple-100',
-  'VENDEU': 'bg-emerald-100/50 text-emerald-700 border-emerald-100',
-  'NAO_VENDEU': 'bg-rose-100/50 text-rose-700 border-rose-100',
-};
+interface AgendaItem {
+  id: string;
+  titulo: string;
+  data_inicio: string;
+  cliente: { nome: string } | null;
+}
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
+function effectiveStatus(project: DesignerProject): ProjectStatus {
+  const deadline = deadlineState(project.prazo_termino);
+  if (
+    deadline.days !== null &&
+    deadline.days < 0 &&
+    !["PAUSADO", "FINALIZADO"].includes(project.status)
+  ) {
+    return "ATRASADO";
   }
-};
+  return project.status;
+}
 
-const item = {
-  hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1 }
-};
-
-function ProjetistaDashboard() {
+function DesignerDashboard() {
   const { user } = useAuthStore();
-  const { data: stats, isLoading } = useProjetistaStats(user?.id || '');
+  const { data, isLoading } = useQuery({
+    queryKey: ["designer-operation", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { projects: [], agenda: [] };
+      const [projectResult, agendaResult] = await Promise.all([
+        supabase
+          .from("projetos")
+          .select(
+            "id, nome, status, prazo_termino, estagio_andamento, cliente:clientes(id, nome, telefone)",
+          )
+          .eq("projetista_id", user.id)
+          .order("prazo_termino", { ascending: true }),
+        supabase
+          .from("agendamentos")
+          .select("id, titulo, data_inicio, cliente:clientes(nome)")
+          .gte("data_inicio", new Date().toISOString())
+          .order("data_inicio", { ascending: true })
+          .limit(4),
+      ]);
+      if (projectResult.error) throw projectResult.error;
+      if (agendaResult.error) throw agendaResult.error;
+      return {
+        projects: (projectResult.data ?? []) as unknown as DesignerProject[],
+        agenda: (agendaResult.data ?? []) as unknown as AgendaItem[],
+      };
+    },
+    enabled: Boolean(user?.id),
+  });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
+  const agenda = data?.agenda ?? [];
+  const priorities = useMemo(
+    () =>
+      projects
+        .filter((project) => project.status !== "FINALIZADO")
+        .sort((a, b) => {
+          if (a.status === "PAUSADO" && b.status !== "PAUSADO") return 1;
+          if (a.status !== "PAUSADO" && b.status === "PAUSADO") return -1;
+          return a.prazo_termino.localeCompare(b.prazo_termino);
+        })
+        .slice(0, 6),
+    [projects],
+  );
 
-  const kpis = [
-    { 
-      title: 'Vendas Totais', 
-      value: stats?.totalVendido || 0,
-      isCurrency: true,
-      icon: DollarSign, 
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-50/50'
+  const uniqueClients = new Set(projects.map((project) => project.cliente?.id).filter(Boolean))
+    .size;
+  const cards = [
+    {
+      label: "Aguardando meu aceite",
+      value: projects.filter((project) => project.status === "PRONTO").length,
+      icon: UserRoundCheck,
+      style: "bg-violet-50 text-violet-700",
     },
-    { 
-      title: 'Projetos Ativos', 
-      value: stats?.projetosAtivos || 0, 
-      icon: Briefcase, 
-      color: 'text-blue-500',
-      bg: 'bg-blue-50/50'
+    {
+      label: "Carga ativa",
+      value: projects.filter((project) =>
+        ["EM_EXECUCAO", "ATRASADO", "EM_ACOMPANHAMENTO"].includes(project.status),
+      ).length,
+      icon: FolderKanban,
+      style: "bg-sky-50 text-sky-700",
     },
-    { 
-      title: 'Comissão Acumulada', 
-      value: stats?.comissaoTotal || 0,
-      isCurrency: true,
-      icon: TrendingUp, 
-      color: 'text-purple-500',
-      bg: 'bg-purple-50/50'
+    {
+      label: "Perto do prazo",
+      value: projects.filter((project) => {
+        const days = deadlineState(project.prazo_termino).days;
+        return days !== null && days <= 2 && project.status !== "FINALIZADO";
+      }).length,
+      icon: Clock3,
+      style: "bg-rose-50 text-rose-700",
     },
-    { 
-      title: 'Conversão', 
-      value: stats?.taxaConversao || 0,
-      isPercent: true,
-      icon: CheckCircle2, 
-      color: 'text-amber-500',
-      bg: 'bg-amber-50/50'
+    {
+      label: "Pausados pela gestão",
+      value: projects.filter((project) => project.status === "PAUSADO").length,
+      icon: CirclePause,
+      style: "bg-slate-100 text-slate-700",
+    },
+    {
+      label: "Clientes na carteira",
+      value: uniqueClients,
+      icon: ContactRound,
+      style: "bg-amber-50 text-amber-700",
     },
   ];
 
+  if (isLoading) return <div className="h-40 animate-pulse rounded-3xl bg-slate-200/60" />;
+
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-8 pb-8"
-    >
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Bem-vindo, {user?.nome}</h1>
-        <p className="text-muted-foreground">Acompanhe seus projetos e performance comercial com a DF Móveis.</p>
-      </div>
-      
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <motion.div key={kpi.title} variants={item}>
-            <Card className="overflow-hidden border-none shadow-md bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">
-              <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform`}>
-                <kpi.icon className={`h-16 w-16 ${kpi.color}`} />
+    <div className="space-y-6">
+      <section className="relative overflow-hidden rounded-3xl bg-[#1a1c21] px-6 py-7 text-white md:px-8 md:py-9">
+        <div className="absolute -right-12 -top-20 h-56 w-56 rounded-full bg-[#c92031]/20 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d6c08d]">
+              <Sparkles className="h-3.5 w-3.5" /> Sua mesa de trabalho
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] md:text-4xl">
+              Olá, {user?.nome?.split(" ")[0]}.
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55">
+              Aceite os projetos enviados pelo dono ou assuma somente o próximo item livre da fila.
+              Depois, mantenha cada etapa avançando.
+            </p>
+          </div>
+          <Button asChild className="bg-[#c92031] text-white hover:bg-[#aa1726]">
+            <Link to="/demandas">
+              Ver fila e solicitações <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {cards.map((item) => (
+          <Card key={item.label} className="workspace-card border-0 shadow-none">
+            <CardContent className="flex items-center gap-4 p-5">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.style}`}
+              >
+                <item.icon className="h-5 w-5" />
               </div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{kpi.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${kpi.bg}`}>
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="text-2xl font-bold truncate max-w-full">
-                  {kpi.isCurrency 
-                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(kpi.value)
-                    : kpi.isPercent
-                      ? `${kpi.value.toFixed(1)}%`
-                      : kpi.value
-                  }
-                </div>
-                <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  <span>Meta do mês</span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              <div>
+                <p className="text-2xl font-semibold tracking-tight text-slate-950">{item.value}</p>
+                <p className="text-xs text-slate-500">{item.label}</p>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </div>
+      </section>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <motion.div variants={item} className="lg:col-span-4">
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Pipeline de Vendas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[350px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats?.pipelineData}>
-                  <defs>
-                    <linearGradient id="barGradientProjetista" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tick={{ fill: '#64748b' }}
-                  />
-                  <YAxis 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tick={{ fill: '#64748b' }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
-                  />
-                  <Bar dataKey="value" fill="url(#barGradientProjetista)" radius={[6, 6, 0, 0]} barSize={50} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item} className="lg:col-span-3">
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                Status dos Projetos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[350px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats?.statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80}
-                    outerRadius={110}
-                    paddingAngle={8}
-                    dataKey="value"
-                    animationBegin={200}
-                    animationDuration={1500}
-                  >
-                    {stats?.statusData?.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap justify-center gap-4 mt-2 pb-4">
-                {stats?.statusData?.map((entry, index) => (
-                  <div key={entry.name} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">{entry.name} ({entry.value})</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <motion.div variants={item}>
-        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm overflow-hidden">
-          <CardHeader className="border-b bg-muted/30">
-            <CardTitle className="text-lg font-semibold">Meus Projetos Recentes</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="relative w-full overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/10 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">
-                    <th className="h-12 px-6 text-left align-middle font-bold">Cliente</th>
-                    <th className="h-12 px-6 text-left align-middle font-bold">Status Projeto</th>
-                    <th className="h-12 px-6 text-left align-middle font-bold">Venda</th>
-                    <th className="h-12 px-6 text-left align-middle font-bold">Prazo</th>
-                    <th className="h-12 px-6 text-right align-middle font-bold">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {stats?.meusProjetos.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                        Nenhum projeto encontrado.
-                      </td>
-                    </tr>
-                  ) : (
-                    stats?.meusProjetos.map((projeto) => (
-                      <tr key={projeto.id} className="hover:bg-muted/20 transition-colors group">
-                        <td className="px-6 py-4 align-middle">
-                          <div className="font-semibold text-foreground">{projeto.cliente?.nome}</div>
-                          <div className="text-[10px] text-muted-foreground">{projeto.cliente?.email}</div>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase border tracking-tighter ${STATUS_COLORS[projeto.status]}`}>
-                            {projeto.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase border tracking-tighter ${VENDA_COLORS[projeto.status_venda]}`}>
-                            {projeto.status_venda.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span className="text-xs">{new Date(projeto.prazo_termino).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right font-mono font-bold text-foreground">
-                          {projeto.valor_venda ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(projeto.valor_venda)) : '-'}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+      <section className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+        <div className="workspace-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Prioridade de trabalho</p>
+              <p className="mt-0.5 text-xs text-slate-400">Ordenado pelo prazo mais próximo</p>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </motion.div>
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+              <Link to="/projetista/meus-projetos">Ver todos</Link>
+            </Button>
+          </div>
+          {priorities.length === 0 ? (
+            <div className="px-5 py-14 text-center text-sm text-slate-400">
+              Nenhum projeto ativo na sua fila.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {priorities.map((project) => {
+                const status = project.status === "PRONTO" ? "PRONTO" : effectiveStatus(project);
+                const deadline = deadlineState(project.prazo_termino);
+                return (
+                  <div
+                    key={project.id}
+                    className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_150px_110px] sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800">
+                        {project.nome || "Projeto sem nome"}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">
+                        {project.cliente?.nome} · {project.estagio_andamento || "Início"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`w-fit rounded-full text-[9px] ${
+                        project.status === "PRONTO"
+                          ? "border-violet-200 bg-violet-50 text-violet-700"
+                          : PROJECT_STATUS_STYLES[status]
+                      }`}
+                    >
+                      {project.status === "PRONTO"
+                        ? "Aguardando seu aceite"
+                        : PROJECT_STATUS_LABELS[status]}
+                    </Badge>
+                    <div className="sm:text-right">
+                      <p className="text-xs font-medium text-slate-700">
+                        {formatDate(project.prazo_termino)}
+                      </p>
+                      <p
+                        className={`mt-1 text-[10px] ${deadline.tone === "danger" ? "font-semibold text-rose-600" : "text-slate-400"}`}
+                      >
+                        {deadline.label}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="workspace-card overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+            <CalendarDays className="h-4 w-4 text-[#c92031]" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Agenda da loja</p>
+              <p className="text-xs text-slate-400">Próximos horários de todos</p>
+            </div>
+          </div>
+          {agenda.length === 0 ? (
+            <div className="px-5 py-14 text-center text-xs text-slate-400">Agenda livre.</div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {agenda.map((item) => {
+                const date = new Date(item.data_inicio);
+                return (
+                  <div key={item.id} className="flex gap-3 px-5 py-4">
+                    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-[#f5f1e7]">
+                      <span className="text-[9px] font-bold uppercase text-[#a08753]">
+                        {date.toLocaleDateString("pt-BR", { month: "short" })}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800">{date.getDate()}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-slate-800">{item.titulo}</p>
+                      <p className="mt-1 truncate text-[11px] text-slate-400">
+                        {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                        {item.cliente?.nome ?? "Equipe"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="border-t border-slate-100 p-3">
+            <Button asChild variant="ghost" size="sm" className="w-full text-xs">
+              <Link to="/agenda">Abrir agenda compartilhada</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

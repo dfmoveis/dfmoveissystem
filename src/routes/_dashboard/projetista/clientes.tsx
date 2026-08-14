@@ -33,6 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesInsert } from '@/integrations/supabase/types';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -56,8 +57,11 @@ const FONTES = [
   { value: 'ARQUITETO', label: 'Arquiteto' },
   { value: 'VENDA_DIRETA', label: 'Venda Direta' },
   { value: 'INDICACAO', label: 'Indicação' },
-  { value: 'REFORMA', label: 'Reforma' },
 ];
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'erro desconhecido';
+}
 
 function ProjetistaClientesPage() {
   const { user, role } = useAuthStore();
@@ -84,7 +88,7 @@ function ProjetistaClientesPage() {
     data_inicio: new Date().toISOString().slice(0, 10),
     prazo_termino: '',
     observacoes: '',
-    sem_projetista: false,
+    projetista_id: '',
   });
 
   const { data: clientes, isLoading } = useQuery({
@@ -141,9 +145,9 @@ function ProjetistaClientesPage() {
       setPendingClient(created);
       setIsProjectDialogOpen(true);
     },
-    onError: (e: any) => {
+    onError: (e: unknown) => {
       console.error('[clientes] insert error', e);
-      toast.error('Erro ao salvar cliente: ' + (e?.message ?? e));
+      toast.error('Erro ao salvar cliente: ' + errorMessage(e));
     },
   });
 
@@ -151,9 +155,10 @@ function ProjetistaClientesPage() {
     mutationFn: async (data: typeof projectForm) => {
       if (!user?.id || !pendingClient) throw new Error('Cliente não selecionado.');
       const today = new Date().toISOString().slice(0, 10);
-      const payload: any = {
+      const assignedDesignerId = isAdmin && data.projetista_id ? data.projetista_id : null;
+      const payload: TablesInsert<'projetos'> = {
         cliente_id: pendingClient.id,
-        projetista_id: data.sem_projetista ? null : user.id,
+        projetista_id: assignedDesignerId,
         status: 'PRONTO' as const,
         status_venda: 'EM_NEGOCIACAO' as const,
         data_inicio: data.data_inicio || today,
@@ -171,24 +176,28 @@ function ProjetistaClientesPage() {
         console.error('[projetos] insert error', error);
         throw error;
       }
-      return { semProjetista: data.sem_projetista };
+      if (assignedDesignerId) {
+        const { error: clientError } = await supabase
+          .from('clientes')
+          .update({ projetista_id: assignedDesignerId })
+          .eq('id', pendingClient.id);
+        if (clientError) throw clientError;
+      }
+      return { assigned: Boolean(assignedDesignerId) };
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['demandas-orfas'] });
       toast.success(
-        res.semProjetista
-          ? 'Projeto criado e enviado para a Fila de Demandas!'
-          : 'Projeto criado com sucesso!',
+        res.assigned
+          ? 'Atendimento cadastrado e enviado para aceite da projetista!'
+          : 'Atendimento cadastrado e enviado ao superusuário para distribuição!',
       );
-      setProjectForm({ nome: '', fonte: '', nome_arquiteto: '', rt_arquiteto: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', sem_projetista: false });
+      setProjectForm({ nome: '', fonte: '', nome_arquiteto: '', rt_arquiteto: '', valor_venda: '', data_inicio: new Date().toISOString().slice(0, 10), prazo_termino: '', observacoes: '', projetista_id: '' });
       setPendingClient(null);
       setIsProjectDialogOpen(false);
     },
-    onError: (e: any) =>
-      toast.error(
-        'Erro ao criar projeto: ' + (e?.message || e?.details || e?.hint || 'erro desconhecido'),
-      ),
+    onError: (e: unknown) => toast.error('Erro ao criar projeto: ' + errorMessage(e)),
   });
 
   const assignProjetista = useMutation({
@@ -203,7 +212,7 @@ function ProjetistaClientesPage() {
       queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
       toast.success('Atendimento atualizado!');
     },
-    onError: (e: any) => toast.error('Erro ao atribuir: ' + (e?.message ?? e)),
+    onError: (e: unknown) => toast.error('Erro ao atribuir: ' + errorMessage(e)),
   });
 
   const releaseAssignment = useMutation({
@@ -219,7 +228,7 @@ function ProjetistaClientesPage() {
       queryClient.invalidateQueries({ queryKey: ['clientes-global'] });
       toast.success('Atribuição liberada. Cliente em aberto novamente.');
     },
-    onError: (e: any) => toast.error('Erro ao liberar: ' + (e?.message ?? e)),
+    onError: (e: unknown) => toast.error('Erro ao liberar: ' + errorMessage(e)),
   });
 
   const handleSaveClient = () => {
@@ -251,13 +260,20 @@ function ProjetistaClientesPage() {
     createProject.mutate(projectForm);
   };
 
+  const visibleClientes = isAdmin
+    ? clientes
+    : clientes?.filter((cliente) => cliente.projetista_id === user?.id);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground">
-            Carteira global de clientes da empresa. Todos podem visualizar.
+          <p className="workspace-eyebrow">Entrada da operação</p>
+          <h1 className="workspace-title mt-2">Clientes e novos atendimentos</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {isAdmin
+              ? 'Cadastre o cliente, registre a origem e encaminhe o primeiro projeto.'
+              : 'Sua carteira mostra apenas os clientes vinculados aos seus projetos.'}
           </p>
         </div>
 
@@ -265,14 +281,14 @@ function ProjetistaClientesPage() {
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Novo Cliente
+              Novo atendimento
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogTitle>Cadastrar novo atendimento</DialogTitle>
               <DialogDescription>
-                Nome e WhatsApp são obrigatórios. Após salvar, você cadastra o projeto.
+                Primeiro registre o cliente. Na etapa seguinte, informe a origem e o projeto.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -334,7 +350,7 @@ function ProjetistaClientesPage() {
           if (!open) setPendingClient(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-[620px]">
           <DialogHeader>
             <DialogTitle>Dados do Projeto</DialogTitle>
             <DialogDescription>
@@ -392,6 +408,29 @@ function ProjetistaClientesPage() {
                 </div>
               </div>
             )}
+            {isAdmin && (
+              <div className="grid gap-2 rounded-xl border border-[#cbb27a]/30 bg-[#fbf7eb] p-3">
+                <Label>Projetista responsável</Label>
+                <Select
+                  value={projectForm.projetista_id}
+                  onValueChange={(value) => setProjectForm({ ...projectForm, projetista_id: value })}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Deixar para distribuir depois" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projetistas?.map((projetista) => (
+                      <SelectItem key={projetista.id} value={projetista.id}>
+                        {projetista.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-[#7a6740]">
+                  Se não escolher agora, o projeto ficará na Central de Distribuição.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="data-inicio">Data de início</Label>
@@ -430,20 +469,11 @@ function ProjetistaClientesPage() {
                 onChange={(e) => setProjectForm({ ...projectForm, observacoes: e.target.value })}
               />
             </div>
-            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40 transition-colors">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={projectForm.sem_projetista}
-                onChange={(e) => setProjectForm({ ...projectForm, sem_projetista: e.target.checked })}
-              />
-              <div className="text-sm">
-                <div className="font-medium">Enviar para a Fila de Demandas</div>
-                <div className="text-xs text-muted-foreground">
-                  Cria sem projetista atribuído. Qualquer projetista poderá assumir na aba Demandas.
-                </div>
+            {!isAdmin && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                Após o cadastro, o superusuário escolherá a projetista e confirmará o prazo.
               </div>
-            </label>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={handleSaveProject} disabled={createProject.isPending}>
@@ -453,9 +483,9 @@ function ProjetistaClientesPage() {
         </DialogContent>
       </Dialog>
 
-      <Card>
+      <Card className="workspace-card border-0 shadow-none">
         <CardHeader>
-          <CardTitle>Todos os Clientes</CardTitle>
+          <CardTitle>{isAdmin ? 'Base de clientes' : 'Minha carteira de clientes'}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -476,8 +506,8 @@ function ProjetistaClientesPage() {
                     <TableCell colSpan={6} className="h-12 bg-muted/20" />
                   </TableRow>
                 ))
-              ) : clientes && clientes.length > 0 ? (
-                clientes.map((c) => {
+              ) : visibleClientes && visibleClientes.length > 0 ? (
+                visibleClientes.map((c) => {
                   const isMine = c.projetista?.id && c.projetista.id === user?.id;
                   return (
                     <TableRow key={c.id}>

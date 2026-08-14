@@ -1,310 +1,446 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, AlertCircle, DollarSign, TrendingUp, Users, ArrowUpRight, BarChart3 } from 'lucide-react';
-import { useAdminStats } from '@/hooks/use-admin-data';
-import { motion } from 'framer-motion';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell 
-} from 'recharts';
+import { useMemo } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  CalendarDays,
+  CirclePause,
+  Clock3,
+  ContactRound,
+  FolderKanban,
+  Route as RouteIcon,
+  Sparkles,
+  UserRoundCheck,
+  UsersRound,
+} from "lucide-react";
 
-export const Route = createFileRoute('/_dashboard/admin/dashboard')({
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  deadlineState,
+  formatDate,
+  initials,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_STYLES,
+} from "@/lib/project-utils";
+import type { ProjectStatus } from "@/types/database";
+import { ensureAuthStoreHydrated } from "@/hooks/use-auth";
+
+export const Route = createFileRoute("/_dashboard/admin/dashboard")({
+  beforeLoad: async () => {
+    const { role } = await ensureAuthStoreHydrated();
+    if (role !== "ADMIN") throw redirect({ to: "/projetista/dashboard" });
+  },
   component: AdminDashboard,
 });
 
-const COLORS = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6'];
+interface OperationProject {
+  id: string;
+  nome: string | null;
+  status: ProjectStatus;
+  prazo_termino: string;
+  projetista_id: string | null;
+  cliente: { nome: string } | null;
+  projetista: { id: string; nome: string; avatar_url: string | null } | null;
+}
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
+interface OperationDesigner {
+  id: string;
+  nome: string;
+  avatar_url: string | null;
+}
+
+interface AgendaItem {
+  id: string;
+  titulo: string;
+  data_inicio: string;
+  data_fim: string;
+  tipo: string;
+  criado_por: { nome: string } | null;
+  cliente: { nome: string } | null;
+}
+
+function statusWithDeadline(project: OperationProject): ProjectStatus {
+  const deadline = deadlineState(project.prazo_termino);
+  if (
+    deadline.days !== null &&
+    deadline.days < 0 &&
+    !["PAUSADO", "FINALIZADO"].includes(project.status)
+  ) {
+    return "ATRASADO";
   }
-};
-
-const item = {
-  hidden: { y: 20, opacity: 0 },
-  show: { y: 0, opacity: 1 }
-};
+  return project.status;
+}
 
 function AdminDashboard() {
-  const { data: stats, isLoading } = useAdminStats();
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-operation"],
+    queryFn: async () => {
+      const today = new Date().toISOString();
+      const [projectResult, designerResult, agendaResult] = await Promise.all([
+        supabase
+          .from("projetos")
+          .select(
+            "id, nome, status, prazo_termino, projetista_id, cliente:clientes(nome), projetista:users(id, nome, avatar_url)",
+          )
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("users")
+          .select("id, nome, avatar_url")
+          .eq("role", "PROJETISTA")
+          .eq("status", "ATIVO")
+          .order("nome"),
+        supabase
+          .from("agendamentos")
+          .select(
+            "id, titulo, data_inicio, data_fim, tipo, criado_por:users(nome), cliente:clientes(nome)",
+          )
+          .gte("data_inicio", today)
+          .order("data_inicio", { ascending: true })
+          .limit(5),
+      ]);
+
+      if (projectResult.error) throw projectResult.error;
+      if (designerResult.error) throw designerResult.error;
+      if (agendaResult.error) throw agendaResult.error;
+
+      return {
+        projects: (projectResult.data ?? []) as unknown as OperationProject[],
+        designers: (designerResult.data ?? []) as OperationDesigner[],
+        agenda: (agendaResult.data ?? []) as unknown as AgendaItem[],
+      };
+    },
+  });
+
+  const projects = useMemo(() => data?.projects ?? [], [data?.projects]);
+  const designers = useMemo(() => data?.designers ?? [], [data?.designers]);
+  const agenda = data?.agenda ?? [];
+
+  const attentionProjects = useMemo(
+    () =>
+      projects
+        .filter((project) => {
+          const deadline = deadlineState(project.prazo_termino);
+          return (
+            !project.projetista_id ||
+            project.status === "PAUSADO" ||
+            (deadline.days !== null && deadline.days <= 2 && project.status !== "FINALIZADO")
+          );
+        })
+        .sort((a, b) => {
+          if (!a.projetista_id && b.projetista_id) return -1;
+          if (a.projetista_id && !b.projetista_id) return 1;
+          return a.prazo_termino.localeCompare(b.prazo_termino);
+        })
+        .slice(0, 6),
+    [projects],
+  );
+
+  const workload = useMemo(
+    () =>
+      designers.map((designer) => {
+        const own = projects.filter((project) => project.projetista_id === designer.id);
+        const active = own.filter((project) =>
+          ["EM_EXECUCAO", "ATRASADO", "EM_ACOMPANHAMENTO"].includes(project.status),
+        );
+        const pending = own.filter((project) => project.status === "PRONTO");
+        const dueSoon = active.filter((project) => {
+          const days = deadlineState(project.prazo_termino).days;
+          return days !== null && days <= 2;
+        });
+        return {
+          ...designer,
+          active: active.length,
+          pending: pending.length,
+          paused: own.filter((project) => project.status === "PAUSADO").length,
+          dueSoon: dueSoon.length,
+        };
+      }),
+    [designers, projects],
+  );
+
+  const indicators = [
+    {
+      label: "Novas entradas",
+      value: projects.filter((project) => !project.projetista_id).length,
+      description: "aguardando distribuição",
+      icon: RouteIcon,
+      style: "bg-amber-50 text-amber-700",
+    },
+    {
+      label: "Aguardando aceite",
+      value: projects.filter((project) => project.projetista_id && project.status === "PRONTO")
+        .length,
+      description: "solicitações enviadas",
+      icon: UserRoundCheck,
+      style: "bg-violet-50 text-violet-700",
+    },
+    {
+      label: "Em desenvolvimento",
+      value: projects.filter((project) => statusWithDeadline(project) === "EM_EXECUCAO").length,
+      description: "na carga da equipe",
+      icon: FolderKanban,
+      style: "bg-sky-50 text-sky-700",
+    },
+    {
+      label: "Pausados",
+      value: projects.filter((project) => project.status === "PAUSADO").length,
+      description: "fora da carga ativa",
+      icon: CirclePause,
+      style: "bg-slate-100 text-slate-700",
+    },
+    {
+      label: "Atenção ao prazo",
+      value: projects.filter((project) => statusWithDeadline(project) === "ATRASADO").length,
+      description: "projetos vencidos",
+      icon: Clock3,
+      style: "bg-rose-50 text-rose-700",
+    },
+  ];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="space-y-5">
+        <div className="h-32 animate-pulse rounded-2xl bg-slate-200/60" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-28 animate-pulse rounded-2xl bg-slate-200/60" />
+          ))}
+        </div>
       </div>
     );
   }
 
-  const kpis = [
-    { 
-      title: 'Total Vendido', 
-      value: stats?.totalVendas || 0,
-      isCurrency: true,
-      icon: DollarSign, 
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-50/50'
-    },
-    { 
-      title: 'Total Entradas', 
-      value: stats?.totalEntradas || 0,
-      isCurrency: true,
-      icon: TrendingUp, 
-      color: 'text-blue-500',
-      bg: 'bg-blue-50/50'
-    },
-    { 
-      title: 'Comissões Projetistas', 
-      value: stats?.totalComissoes || 0,
-      isCurrency: true,
-      icon: BarChart3, 
-      color: 'text-purple-500',
-      bg: 'bg-purple-50/50'
-    },
-    { 
-      title: 'Comissões RTs', 
-      value: stats?.totalRTs || 0,
-      isCurrency: true,
-      icon: Users, 
-      color: 'text-orange-500',
-      bg: 'bg-orange-50/50'
-    },
-    { 
-      title: 'Parcelas a Receber', 
-      value: stats?.totalParcelasReceber || 0,
-      isCurrency: true,
-      icon: DollarSign, 
-      color: 'text-rose-500',
-      bg: 'bg-rose-50/50'
-    },
-    { 
-      title: 'Projetos Ativos', 
-      value: stats?.projetosExecucao || 0, 
-      icon: Briefcase, 
-      color: 'text-amber-500',
-      bg: 'bg-amber-50/50'
-    },
-  ];
-
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-8 pb-8"
-    >
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard Administrativo</h1>
-        <p className="text-muted-foreground">Visão geral do desempenho da DF Móveis Planejados.</p>
-      </div>
-      
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {kpis.map((kpi) => (
-          <motion.div key={kpi.title} variants={item}>
-            <Card className="overflow-hidden border-none shadow-md bg-card/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">
-              <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform`}>
-                <kpi.icon className={`h-16 w-16 ${kpi.color}`} />
+    <div className="space-y-6">
+      <section className="relative overflow-hidden rounded-3xl bg-[#1a1c21] px-6 py-7 text-white md:px-8 md:py-9">
+        <div className="absolute -right-12 -top-20 h-56 w-56 rounded-full bg-[#c92031]/20 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 h-24 w-48 bg-[#cbb27a]/10 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div>
+            <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#d6c08d]">
+              <Sparkles className="h-3.5 w-3.5" /> Controle da loja
+            </p>
+            <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-[-0.035em] md:text-4xl">
+              Tudo que entrou, quem está fazendo e quando precisa ficar pronto.
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/55">
+              Uma visão simples da carga das três projetistas, dos prazos e da agenda compartilhada.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild className="bg-[#c92031] text-white hover:bg-[#aa1726]">
+              <Link to="/demandas">
+                Distribuir projetos <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            >
+              <Link to="/agenda">Ver agenda</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {indicators.map((indicator) => (
+          <Card key={indicator.label} className="workspace-card border-0 shadow-none">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">{indicator.label}</p>
+                  <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+                    {indicator.value}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">{indicator.description}</p>
+                </div>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${indicator.style}`}
+                >
+                  <indicator.icon className="h-5 w-5" />
+                </div>
               </div>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{kpi.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${kpi.bg}`}>
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="text-2xl font-bold truncate max-w-full">
-                  {kpi.isCurrency 
-                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(kpi.value)
-                    : kpi.value
-                  }
-                </div>
-                <div className="flex items-center mt-1 text-xs font-medium text-emerald-600">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  <span>+12% este mês</span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+            </CardContent>
+          </Card>
         ))}
-      </div>
+      </section>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <motion.div variants={item}>
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Vendas por Projetista
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[350px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats?.vendasPorProjetista}>
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tick={{ fill: '#64748b' }}
-                  />
-                  <YAxis 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tick={{ fill: '#64748b' }}
-                    tickFormatter={(value) => `R$${value / 1000}k`} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
-                    cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
-                  />
-                  <Bar dataKey="total" fill="url(#barGradient)" radius={[6, 6, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Status dos Projetos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[350px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats?.statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80}
-                    outerRadius={110}
-                    paddingAngle={8}
-                    dataKey="value"
-                    animationBegin={200}
-                    animationDuration={1500}
+      <section className="grid gap-5 xl:grid-cols-[1.3fr_.7fr]">
+        <div className="workspace-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Projetos que pedem atenção</p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Sem responsável, pausados ou próximos do prazo
+              </p>
+            </div>
+            <Button asChild variant="ghost" size="sm" className="text-xs">
+              <Link to="/demandas">
+                Ver central <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+          {attentionProjects.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm font-medium text-emerald-700">Operação em dia</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Nenhum projeto precisa de ação imediata.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {attentionProjects.map((project) => {
+                const status = statusWithDeadline(project);
+                const deadline = deadlineState(project.prazo_termino);
+                return (
+                  <div
+                    key={project.id}
+                    className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_150px_120px] sm:items-center"
                   >
-                    {stats?.statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap justify-center gap-6 mt-2 pb-4">
-                {stats?.statusData.map((entry, index) => (
-                  <div key={entry.name} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{entry.name}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800">
+                        {project.nome || "Projeto sem nome"}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">
+                        {project.cliente?.nome ?? "Cliente não informado"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-[9px] font-bold text-white">
+                        {initials(project.projetista?.nome ?? "Sem responsável")}
+                      </div>
+                      <span className="truncate text-xs text-slate-600">
+                        {project.projetista?.nome ?? "Sem responsável"}
+                      </span>
+                    </div>
+                    <div className="sm:text-right">
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full text-[9px] ${PROJECT_STATUS_STYLES[status]}`}
+                      >
+                        {PROJECT_STATUS_LABELS[status]}
+                      </Badge>
+                      <p
+                        className={`mt-1 text-[10px] ${deadline.tone === "danger" ? "font-semibold text-rose-600" : "text-slate-400"}`}
+                      >
+                        {formatDate(project.prazo_termino)}
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <motion.div variants={item}>
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-primary" />
-                Motivos de Venda Perdida
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px] pt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats?.motivosPerda} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" fontSize={12} hide />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    fontSize={12} 
-                    width={100}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={30} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <div className="workspace-card overflow-hidden">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-[#c92031]" />
+              <p className="text-sm font-semibold text-slate-900">Próximos compromissos</p>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-400">Agenda visível para toda a equipe</p>
+          </div>
+          {agenda.length === 0 ? (
+            <div className="px-5 py-12 text-center text-xs text-slate-400">
+              Nenhum compromisso futuro.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {agenda.map((item) => {
+                const date = new Date(item.data_inicio);
+                return (
+                  <div key={item.id} className="flex gap-3 px-5 py-3.5">
+                    <div className="w-11 shrink-0 rounded-lg bg-[#f5f1e7] py-1.5 text-center">
+                      <p className="text-[9px] font-bold uppercase text-[#a08753]">
+                        {date.toLocaleDateString("pt-BR", { month: "short" })}
+                      </p>
+                      <p className="text-lg font-semibold leading-5 text-slate-800">
+                        {date.getDate()}
+                      </p>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold text-slate-800">{item.titulo}</p>
+                      <p className="mt-1 truncate text-[11px] text-slate-400">
+                        {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} ·{" "}
+                        {item.cliente?.nome ?? item.criado_por?.nome ?? "Equipe"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
 
-        <motion.div variants={item}>
-           <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm overflow-hidden h-full">
-            <CardHeader className="border-b bg-muted/30">
-              <CardTitle className="text-lg font-semibold">Projetos Recentes</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="relative w-full overflow-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/10 text-muted-foreground uppercase text-[10px] tracking-widest font-bold">
-                      <th className="h-12 px-6 text-left align-middle font-bold">Cliente</th>
-                      <th className="h-12 px-6 text-left align-middle font-bold">Status</th>
-                      <th className="h-12 px-6 text-right align-middle font-bold">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {stats?.projetosRecentes.map((projeto: any) => (
-                      <tr key={projeto.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="px-6 py-4 align-middle">
-                          <div className="font-semibold text-foreground truncate max-w-[120px]">{projeto.cliente?.nome}</div>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                            projeto.status === 'EM_EXECUCAO' ? 'bg-blue-100/50 text-blue-700' :
-                            projeto.status === 'ATRASADO' ? 'bg-red-100/50 text-red-700' :
-                            projeto.status === 'FINALIZADO' ? 'bg-green-100/50 text-green-700' :
-                            'bg-gray-100/50 text-gray-700'
-                          }`}>
-                            {projeto.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right font-mono text-xs">
-                          {projeto.valor_venda ? `R$${(projeto.valor_venda/1000).toFixed(1)}k` : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      <section>
+        <div className="mb-3 flex items-end justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <UsersRound className="h-4 w-4 text-[#a08753]" />
+              <h3 className="text-sm font-semibold text-slate-900">Carga da equipe</h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Projetos pausados ficam fora da carga ativa
+            </p>
+          </div>
+          <Button asChild variant="ghost" size="sm" className="text-xs">
+            <Link to="/admin/equipe">Gerenciar equipe</Link>
+          </Button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {workload.map((designer) => (
+            <div key={designer.id} className="workspace-card p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-xs font-bold text-white">
+                  {designer.avatar_url ? (
+                    <img src={designer.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials(designer.nome)
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-800">{designer.nome}</p>
+                  <p className="text-[11px] text-slate-400">Projetista</p>
+                </div>
+                <span className="text-2xl font-semibold tracking-tight text-slate-900">
+                  {designer.active}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </motion.div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-slate-400">Aceite</p>
+                  <p
+                    className={`mt-1 text-sm font-semibold ${designer.pending ? "text-violet-600" : "text-slate-700"}`}
+                  >
+                    {designer.pending}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                    Perto do prazo
+                  </p>
+                  <p
+                    className={`mt-1 text-sm font-semibold ${designer.dueSoon ? "text-rose-600" : "text-slate-700"}`}
+                  >
+                    {designer.dueSoon}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-slate-400">Pausados</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">{designer.paused}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
-

@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { ensureAuthStoreHydrated } from '@/hooks/use-auth';
 import { useCommissions } from '@/hooks/use-commissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -23,6 +24,10 @@ import { useState } from 'react';
 import { exportToCSV, exportToPDF } from '@/lib/export-utils';
 
 export const Route = createFileRoute('/_dashboard/admin/comissoes')({
+  beforeLoad: async () => {
+    const { role } = await ensureAuthStoreHydrated();
+    if (role !== 'ADMIN') throw redirect({ to: '/projetista/dashboard' });
+  },
   component: CommissionsPage,
 });
 

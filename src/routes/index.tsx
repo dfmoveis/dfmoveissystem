@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,24 +9,23 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ensureAuthStoreHydrated, useAuthStore } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logoDf from "@/assets/logo-df.png";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
     const { user, role } = await ensureAuthStoreHydrated();
     if (user) {
       throw redirect({
-        to: role === 'ADMIN' ? "/admin/dashboard" : "/projetista/dashboard",
+        to: role === "ADMIN" ? "/admin/dashboard" : "/projetista/dashboard",
       });
     }
   },
   component: LoginPage,
 });
-
-const LOGO_URL = 'https://rmetppilvfrxosvxzhgj.supabase.co/storage/v1/object/public/message-attachments/209c78c7-5f85-4fcb-a4ee-6c7dd71e3717/1778783898939_luewqy_8.png';
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,30 +43,30 @@ export function LoginPage() {
 
     try {
       const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password);
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .eq("password", password);
 
       if (error) throw error;
 
       if (users && users.length > 0) {
         const foundUser = users[0];
 
-        if (foundUser.role !== 'ADMIN') {
-          if (foundUser.status === 'PENDENTE') {
+        if (foundUser.role !== "ADMIN") {
+          if (foundUser.status === "PENDENTE") {
             const msg = "Sua conta está aguardando aprovação do Administrador.";
             setErrorMessage(msg);
             toast.error(msg);
             return;
           }
-          if (foundUser.status === 'BLOQUEADO') {
+          if (foundUser.status === "BLOQUEADO") {
             const msg = "Seu acesso foi bloqueado. Contate o Administrador.";
             setErrorMessage(msg);
             toast.error(msg);
             return;
           }
-          if (foundUser.status !== 'ATIVO') {
+          if (foundUser.status !== "ATIVO") {
             const msg = "Sua conta não está ativa. Contate o Administrador.";
             setErrorMessage(msg);
             toast.error(msg);
@@ -79,11 +78,11 @@ export function LoginPage() {
         setUser({
           ...foundUser,
           avatar_url: foundUser.avatar_url || undefined,
-          created_at: foundUser.created_at || new Date().toISOString()
+          created_at: foundUser.created_at || new Date().toISOString(),
         });
         toast.success(`Bem-vindo, ${foundUser.nome}!`);
 
-        if (foundUser.role === 'ADMIN') {
+        if (foundUser.role === "ADMIN") {
           navigate({ to: "/admin/dashboard" });
         } else {
           navigate({ to: "/projetista/dashboard" });
@@ -93,8 +92,9 @@ export function LoginPage() {
         setErrorMessage(msg);
         toast.error(msg);
       }
-    } catch (error: any) {
-      const msg = "Erro ao conectar com o servidor: " + (error?.message ?? "tente novamente");
+    } catch (error: unknown) {
+      const detail = error instanceof Error ? error.message : "tente novamente";
+      const msg = "Erro ao conectar com o servidor: " + detail;
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -103,92 +103,132 @@ export function LoginPage() {
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-muted/30 p-4 overflow-hidden">
-      <div className="w-full max-w-md space-y-4 flex flex-col items-center">
-        <div className="flex flex-col items-center text-center">
-          <div className="w-64 h-64 flex items-center justify-center">
-            <img 
-              src={LOGO_URL} 
-              alt="DF Móveis" 
-              className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-lighten transition-all duration-300"
-            />
-          </div>
-        </div>
+    <div className="relative min-h-screen overflow-y-auto bg-[#f4f1eb] px-4 py-6 sm:px-6 lg:flex lg:items-center lg:py-10">
+      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#cbb27a]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-[#c92031]/10 blur-3xl" />
 
-        <Card className="w-full shadow-lg border-none bg-card/50 backdrop-blur-sm">
-          <form onSubmit={handleLogin}>
-            <CardHeader>
-              <CardTitle className="text-xl">Login</CardTitle>
-              <CardDescription>
-                Informe seu e-mail e senha cadastrados
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="exemplo@dfmoveis.com"
-                  required
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (errorMessage) setErrorMessage(null); }}
-                  className="bg-background/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Senha</Label>
-                  <Button variant="link" className="px-0 font-normal text-xs text-muted-foreground h-auto">
-                    Esqueceu a senha?
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); if (errorMessage) setErrorMessage(null); }}
-                    className="bg-background/50 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              {errorMessage && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{errorMessage}</AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Entrando..." : "Acessar Sistema"}
-              </Button>
-              <Link to="/cadastro" className="text-sm text-muted-foreground hover:text-foreground">
-                Ainda não tem conta? Cadastre-se
-              </Link>
-            </CardFooter>
-          </form>
-        </Card>
-        
-        <div className="text-center space-y-1">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground/80">
-            Sistema Administrativo DF
-          </h1>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            &copy; {new Date().getFullYear()} DF Móveis Planejados. Todos os direitos reservados.
+      <div className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_90px_-35px_rgba(25,28,33,.38)] lg:grid-cols-[1.05fr_.95fr]">
+        <section className="relative hidden min-h-[650px] overflow-hidden bg-[#191c21] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="absolute -right-24 -top-20 h-72 w-72 rounded-full bg-[#c92031]/25 blur-3xl" />
+          <div className="absolute -bottom-20 left-8 h-64 w-64 rounded-full bg-[#cbb27a]/15 blur-3xl" />
+          <img src={logoDf} alt="DF Móveis" className="relative w-52 object-contain" />
+          <div className="relative max-w-md">
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#d6c08d]">
+              Gestão DF Móveis
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.04em]">
+              Projetos organizados do primeiro contato à entrega.
+            </h1>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-white/55">
+              Clientes, prazos, projetistas e reuniões em um fluxo único para toda a loja.
+            </p>
+          </div>
+          <p className="relative text-[10px] uppercase tracking-[0.18em] text-white/30">
+            © {new Date().getFullYear()} DF Móveis Planejados
           </p>
-        </div>
+        </section>
+
+        <main className="flex min-h-[650px] items-center px-5 py-8 sm:px-10 lg:px-12">
+          <div className="w-full">
+            <div className="mb-8 flex justify-center rounded-2xl bg-[#191c21] p-4 lg:hidden">
+              <img src={logoDf} alt="DF Móveis" className="w-40 object-contain" />
+            </div>
+            <div className="mb-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a78948]">
+                Área da equipe
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+                Bem-vindo de volta
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Entre com os dados cadastrados para acessar sua área de trabalho.
+              </p>
+            </div>
+
+            <Card className="w-full border-0 bg-transparent shadow-none">
+              <form onSubmit={handleLogin}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="exemplo@dfmoveis.com"
+                      required
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      className="h-11 border-slate-200 bg-slate-50/70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Senha</Label>
+                      <Button
+                        variant="link"
+                        className="px-0 font-normal text-xs text-muted-foreground h-auto"
+                      >
+                        Esqueceu a senha?
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (errorMessage) setErrorMessage(null);
+                        }}
+                        className="h-11 border-slate-200 bg-slate-50/70 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {errorMessage && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{errorMessage}</AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3">
+                  <Button
+                    type="submit"
+                    className="h-11 w-full bg-[#c92031] text-white shadow-lg shadow-[#c92031]/15 hover:bg-[#aa1726]"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Entrando..." : "Acessar Sistema"}
+                  </Button>
+                  <Link
+                    to="/cadastro"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Ainda não tem conta? Cadastre-se
+                  </Link>
+                </CardFooter>
+              </form>
+            </Card>
+            <p className="mt-6 text-center text-[10px] uppercase tracking-[0.16em] text-slate-400 lg:hidden">
+              © {new Date().getFullYear()} DF Móveis Planejados
+            </p>
+          </div>
+        </main>
       </div>
     </div>
   );

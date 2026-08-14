@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X, AlertCircle, Check, CheckCircle2 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/hooks/use-auth';
@@ -51,6 +51,33 @@ const TIPO_BADGE_COLORS: Record<string, string> = {
   'VISITA': 'bg-green-100 text-green-700'
 };
 
+interface AgendaForm {
+  titulo: string;
+  descricao: string;
+  data: string;
+  hora_inicio: string;
+  hora_fim: string;
+  tipo: string;
+  cliente_id: string;
+}
+
+interface AgendaEvent {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  data_inicio: string;
+  data_fim: string;
+  tipo: string;
+  status: string;
+  cliente_id: string | null;
+  criado_por: { nome: string } | null;
+  cliente: { nome: string } | null;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'erro desconhecido';
+}
+
 function AgendaPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -76,9 +103,25 @@ function AgendaPage() {
         .select('*, criado_por:users(nome), cliente:clientes(nome)')
         .order('data_inicio', { ascending: true });
       if (error) throw error;
-      return data;
-    }
+      return (data ?? []) as unknown as AgendaEvent[];
+    },
+    refetchInterval: 30_000,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('agenda-compartilhada')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'agendamentos' },
+        () => queryClient.invalidateQueries({ queryKey: ['agendamentos'] }),
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: clientes } = useQuery({
     queryKey: ['clientes-agenda'],
@@ -98,7 +141,7 @@ function AgendaPage() {
     const tooltips: Record<string, React.ReactNode> = {};
     if (!events) return tooltips;
 
-    const grouped = events.reduce((acc: any, event) => {
+    const grouped = events.reduce<Record<string, AgendaEvent[]>>((acc, event) => {
       const dateKey = event.data_inicio.split('T')[0];
       if (!acc[dateKey]) acc[dateKey] = [];
       acc[dateKey].push(event);
@@ -108,7 +151,7 @@ function AgendaPage() {
     Object.keys(grouped).forEach(dateKey => {
       tooltips[dateKey] = (
         <div className="space-y-2">
-          {grouped[dateKey].slice(0, 3).map((e: any) => (
+          {grouped[dateKey].slice(0, 3).map((e) => (
             <div key={e.id} className="text-[10px] border-b border-border last:border-0 pb-1">
               <p className="font-bold truncate">{e.titulo}</p>
               <p className="text-muted-foreground">
@@ -137,17 +180,21 @@ function AgendaPage() {
   }, [events]);
 
   const saveMutation = useMutation({
-    mutationFn: async (event: any) => {
+    mutationFn: async (event: AgendaForm) => {
       if (!event.titulo?.trim()) throw new Error('Informe o título do compromisso.');
       if (!event.data) throw new Error('Selecione a data.');
       if (!event.hora_inicio) throw new Error('Informe o horário de início.');
+      if (!event.hora_fim) throw new Error('Informe o horário de término.');
       if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
 
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
       if (isNaN(data_inicio.getTime())) {
         throw new Error('Data ou hora inválida.');
       }
-      const data_fim = new Date(data_inicio.getTime() + 60 * 60 * 1000);
+      const data_fim = new Date(`${event.data}T${event.hora_fim}`);
+      if (isNaN(data_fim.getTime()) || data_fim <= data_inicio) {
+        throw new Error('O horário final precisa ser posterior ao horário inicial.');
+      }
 
       // Check for overlaps in the same team (or just globally for simplicity as per request)
       const hasOverlap = events?.some(e => {
@@ -191,8 +238,8 @@ function AgendaPage() {
       setFormData({ titulo: '', descricao: '', data: '', hora_inicio: '', hora_fim: '', tipo: 'REUNIAO', cliente_id: '' });
       toast.success(editingEventId ? 'Agendamento atualizado!' : 'Agendamento realizado!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao salvar: ' + (error?.message || error?.details || 'erro desconhecido'));
+    onError: (error: unknown) => {
+      toast.error('Erro ao salvar: ' + errorMessage(error));
     }
   });
 
@@ -205,8 +252,8 @@ function AgendaPage() {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       toast.success('Agendamento cancelado com sucesso!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao cancelar: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao cancelar: ' + errorMessage(error));
     }
   });
 
@@ -222,12 +269,12 @@ function AgendaPage() {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       toast.success('Agendamento confirmado!');
     },
-    onError: (error: any) => {
-      toast.error('Erro ao confirmar: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Erro ao confirmar: ' + errorMessage(error));
     }
   });
 
-  const handleEdit = (event: any) => {
+  const handleEdit = (event: AgendaEvent) => {
     const start = parseISO(event.data_inicio);
     const end = parseISO(event.data_fim);
     setFormData({
@@ -253,8 +300,9 @@ function AgendaPage() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Agenda de Atendimentos</h1>
-          <p className="text-muted-foreground text-sm">Organize as reuniões e compromissos da DF Móveis.</p>
+          <p className="workspace-eyebrow">Um calendário para toda a equipe</p>
+          <h1 className="workspace-title mt-2">Agenda compartilhada</h1>
+          <p className="mt-2 text-sm text-slate-500">Os quatro perfis enxergam os mesmos horários. Conflitos são bloqueados automaticamente.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -298,9 +346,15 @@ function AgendaPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="inicio">Hora Início</Label>
-                <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="inicio">Hora início</Label>
+                  <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="fim">Hora término</Label>
+                  <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
@@ -326,7 +380,7 @@ function AgendaPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-5 border-none shadow-md h-fit">
+        <Card className="workspace-card lg:col-span-5 border-none shadow-none h-fit">
           <CardHeader className="pb-0">
             <CardTitle className="text-lg">Calendário</CardTitle>
           </CardHeader>
@@ -384,7 +438,7 @@ function AgendaPage() {
             </Card>
           ) : (
             <div className="grid gap-3">
-              {filteredEvents.map((event: any) => {
+              {filteredEvents.map((event) => {
                 const isConfirmed = event.status === 'CONFIRMADO';
                 return (
                 <Card key={event.id} className={cn("hover:shadow-md transition-all border-l-4 overflow-hidden group", isConfirmed && "ring-2 ring-emerald-400/60 bg-emerald-50/30")} style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
