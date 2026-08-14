@@ -196,9 +196,9 @@ function AgendaPage() {
         throw new Error('O horário final precisa ser posterior ao horário inicial.');
       }
 
-      // Check for overlaps in the same team (or just globally for simplicity as per request)
-      const hasOverlap = events?.some(e => {
+      const conflictingMeeting = event.tipo === 'REUNIAO' ? events?.find(e => {
         if (editingEventId && e.id === editingEventId) return false;
+        if (e.tipo !== 'REUNIAO') return false;
         
         const eStart = parseISO(e.data_inicio);
         const eEnd = parseISO(e.data_fim);
@@ -207,10 +207,17 @@ function AgendaPage() {
           { start: data_inicio, end: data_fim },
           { start: eStart, end: eEnd }
         );
-      });
+      }) : undefined;
 
-      if (hasOverlap) {
-        throw new Error('Já existe um agendamento neste horário. Por favor, escolha outro horário.');
+      if (conflictingMeeting) {
+        const conflictStart = format(parseISO(conflictingMeeting.data_inicio), 'HH:mm');
+        const conflictEnd = format(parseISO(conflictingMeeting.data_fim), 'HH:mm');
+        const owner = conflictingMeeting.criado_por?.nome
+          ? ` por ${conflictingMeeting.criado_por.nome}`
+          : '';
+        throw new Error(
+          `Já existe uma reunião marcada das ${conflictStart} às ${conflictEnd}${owner}. Escolha outro horário.`,
+        );
       }
 
       const payload = {
@@ -225,10 +232,22 @@ function AgendaPage() {
 
       if (editingEventId) {
         const { error } = await supabase.from('agendamentos').update(payload).eq('id', editingEventId);
-        if (error) { console.error('[agenda] update error', error); throw error; }
+        if (error) {
+          console.error('[agenda] update error', error);
+          if (error.code === '23P01' && event.tipo === 'REUNIAO') {
+            throw new Error('Outra pessoa acabou de marcar uma reunião neste horário. Escolha outro horário.');
+          }
+          throw error;
+        }
       } else {
         const { error } = await supabase.from('agendamentos').insert([payload]);
-        if (error) { console.error('[agenda] insert error', error); throw error; }
+        if (error) {
+          console.error('[agenda] insert error', error);
+          if (error.code === '23P01' && event.tipo === 'REUNIAO') {
+            throw new Error('Outra pessoa acabou de marcar uma reunião neste horário. Escolha outro horário.');
+          }
+          throw error;
+        }
       }
     },
     onSuccess: () => {
@@ -302,7 +321,9 @@ function AgendaPage() {
         <div>
           <p className="workspace-eyebrow">Um calendário para toda a equipe</p>
           <h1 className="workspace-title mt-2">Agenda compartilhada</h1>
-          <p className="mt-2 text-sm text-slate-500">Os quatro perfis enxergam os mesmos horários. Conflitos são bloqueados automaticamente.</p>
+          <p className="mt-2 text-sm text-slate-500">
+            Todos enxergam os mesmos horários. Somente reuniões reservam o horário para toda a equipe.
+          </p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -355,6 +376,21 @@ function AgendaPage() {
                   <Label htmlFor="fim">Hora término</Label>
                   <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
                 </div>
+              </div>
+              <div
+                className={cn(
+                  'flex items-start gap-2 rounded-xl border p-3 text-xs leading-5',
+                  formData.tipo === 'REUNIAO'
+                    ? 'border-red-200 bg-red-50 text-red-800'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                )}
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {formData.tipo === 'REUNIAO'
+                    ? 'Reuniões não podem ocupar o mesmo horário de outra reunião já marcada.'
+                    : 'Este compromisso pode coincidir com outro horário, pois é individual de cada projetista.'}
+                </span>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
