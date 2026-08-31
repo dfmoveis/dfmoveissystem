@@ -12,6 +12,21 @@ import { toast } from "sonner";
 import logoDf from "@/assets/logo-df.png";
 import type { UserStatus } from "@/types/database";
 
+function LoginLogo({ className }: { className: string }) {
+  return (
+    <span className={`relative inline-block ${className}`}>
+      <img src={logoDf} alt="DF Móveis" className="h-auto w-full object-contain" />
+      <img
+        src={logoDf}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-auto w-full object-contain invert"
+        style={{ clipPath: "inset(67% 0 12% 0)" }}
+      />
+    </span>
+  );
+}
+
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     if (typeof window === "undefined") {
@@ -121,7 +136,7 @@ export function LoginPage() {
         <section className="relative hidden min-h-[650px] overflow-hidden bg-[#191c21] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div className="absolute -right-24 -top-20 h-72 w-72 rounded-full bg-[#c92031]/25 blur-3xl" />
           <div className="absolute -bottom-20 left-8 h-64 w-64 rounded-full bg-[#cbb27a]/15 blur-3xl" />
-          <img src={logoDf} alt="DF Móveis" className="relative w-52 object-contain" />
+          <LoginLogo className="relative w-52" />
           <div className="relative max-w-md">
             <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#d6c08d]">
               Gestão DF Móveis
@@ -141,7 +156,7 @@ export function LoginPage() {
         <main className="flex min-h-[650px] items-center px-5 py-8 sm:px-10 lg:px-12">
           <div className="w-full">
             <div className="mb-8 flex justify-center rounded-2xl bg-[#191c21] p-4 lg:hidden">
-              <img src={logoDf} alt="DF Móveis" className="w-40 object-contain" />
+              <LoginLogo className="w-40" />
             </div>
             <div className="mb-7">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#a78948]">
