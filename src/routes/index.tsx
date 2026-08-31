@@ -14,14 +14,19 @@ import type { UserStatus } from "@/types/database";
 
 function LoginLogo({ className }: { className: string }) {
   return (
-    <span className={`relative inline-block [container-type:inline-size] ${className}`}>
+    <span className={`relative inline-block ${className}`}>
       <img src={logoDf} alt="DF Móveis" className="h-auto w-full object-contain" />
+      <img
+        src={logoDf}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-auto w-full object-contain invert"
+        style={{ clipPath: "inset(67% 0 12% 0)" }}
+      />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-[70%] text-center text-[8cqw] font-light leading-none tracking-[0.045em] text-white"
-      >
-        DARIO FERNANDES
-      </span>
+        className="pointer-events-none absolute left-[11%] top-[68.8%] h-[3.2%] w-[3.5%] bg-[#191c21]"
+      />
     </span>
   );
 }
