@@ -335,7 +335,7 @@ function ProjetistaClientesPage() {
                   Primeiro registre o cliente. Na etapa seguinte, informe a origem e o projeto.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-3 py-2">
                 <div className="grid gap-2">
                   <Label htmlFor="nome">
                     Nome Completo <span className="text-destructive">*</span>
@@ -395,14 +395,14 @@ function ProjetistaClientesPage() {
           if (!open) setPendingClient(null);
         }}
       >
-        <DialogContent className="sm:max-w-[620px]">
+        <DialogContent className="gap-3 p-4 sm:max-w-[760px]">
           <DialogHeader>
             <DialogTitle>Dados do Projeto</DialogTitle>
             <DialogDescription>
               {pendingClient ? `Cliente: ${pendingClient.nome}` : "Selecione um cliente."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="nome-projeto">Nome do Projeto</Label>
               <Input
@@ -431,7 +431,7 @@ function ProjetistaClientesPage() {
               </Select>
             </div>
             {(projectForm.fonte === "ARQUITETO" || projectForm.fonte === "INDICACAO") && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="nome-arquiteto">Nome do Arquiteto / Parceiro</Label>
                   <Input
@@ -458,7 +458,7 @@ function ProjetistaClientesPage() {
               </div>
             )}
             {isAdmin && (
-              <div className="grid gap-2 rounded-xl border border-[#cbb27a]/30 bg-[#fbf7eb] p-3">
+              <div className="grid gap-2 rounded-xl border border-[#cbb27a]/30 bg-[#fbf7eb] p-3 sm:col-span-2">
                 <Label>Projetista responsável</Label>
                 <Select
                   value={projectForm.projetista_id}
@@ -482,7 +482,7 @@ function ProjetistaClientesPage() {
                 </p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="data-inicio">Data de início</Label>
                 <Input
@@ -517,18 +517,18 @@ function ProjetistaClientesPage() {
               <Label htmlFor="obs">Observações</Label>
               <Textarea
                 id="obs"
-                rows={3}
+                rows={2}
                 value={projectForm.observacoes}
                 onChange={(e) => setProjectForm({ ...projectForm, observacoes: e.target.value })}
               />
             </div>
             {!isAdmin && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600 sm:col-span-2">
                 Após o cadastro, o superusuário escolherá a projetista e confirmará o prazo.
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="sticky -bottom-4 z-10 -mx-4 border-t bg-background px-4 pb-0 pt-3">
             <Button onClick={handleSaveProject} disabled={createProject.isPending}>
               {createProject.isPending ? "Salvando atendimento..." : "Salvar atendimento"}
             </Button>

@@ -290,7 +290,7 @@ function EquipePage() {
               <p className="text-sm text-muted-foreground">Carregando desempenho...</p>
             </div>
           ) : (
-            <div className="grid gap-4 py-4 md:grid-cols-2">
+            <div className="grid gap-3 py-2 md:grid-cols-2">
               <Card className="bg-muted/30 border-none">
                 <CardContent className="pt-6">
                   <div className="text-sm font-medium text-muted-foreground uppercase">
@@ -364,7 +364,7 @@ function EquipePage() {
         }}
       >
         <DialogContent className="sm:max-w-lg">
-          <form onSubmit={handleCreateMember} className="space-y-5">
+          <form onSubmit={handleCreateMember} className="space-y-3">
             <DialogHeader>
               <DialogTitle>Adicionar projetista</DialogTitle>
               <DialogDescription>
@@ -372,7 +372,7 @@ function EquipePage() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               <div className="grid gap-2">
                 <Label htmlFor="designer-name">Nome completo</Label>
                 <Input
@@ -425,7 +425,7 @@ function EquipePage() {
                 </div>
                 <p className="text-xs text-muted-foreground">Use pelo menos 6 caracteres.</p>
               </div>
-              <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <Label htmlFor="create-admin-password">Confirme sua senha de administrador</Label>
                 <Input
                   id="create-admin-password"

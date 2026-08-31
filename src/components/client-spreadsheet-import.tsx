@@ -184,7 +184,7 @@ export function ClientSpreadsheetImport({ userId, onImported }: ClientSpreadshee
           Importar planilha
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[920px]">
+      <DialogContent className="sm:max-w-[920px]">
         <DialogHeader>
           <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f4ead0] text-[#8a6926]">
             <Sparkles className="h-5 w-5" />
@@ -197,7 +197,7 @@ export function ClientSpreadsheetImport({ userId, onImported }: ClientSpreadshee
         </DialogHeader>
 
         {!preview ? (
-          <div className="space-y-4 py-2">
+          <div className="space-y-3 py-1">
             <input
               ref={inputRef}
               type="file"
@@ -269,7 +269,7 @@ export function ClientSpreadsheetImport({ userId, onImported }: ClientSpreadshee
             </div>
           </div>
         ) : (
-          <div className="space-y-5 py-2">
+          <div className="space-y-3 py-1">
             <div className="flex flex-col justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
                 <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />

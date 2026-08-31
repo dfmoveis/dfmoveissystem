@@ -282,8 +282,8 @@ function MeusProjetosPage() {
               Preencha os dados financeiros obrigatórios para fechar o projeto <strong>{closingProject?.nome}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-3 py-1">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="valor_total">Valor Total (R$)</Label>
                 <Input id="valor_total" type="number" value={valorVenda} onChange={(e) => setValorVenda(e.target.value)} placeholder="0,00" />
@@ -294,7 +294,7 @@ function MeusProjetosPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="entrada">Valor Entrada (R$)</Label>
                 <Input id="entrada" type="number" value={valorEntrada} onChange={(e) => setValorEntrada(e.target.value)} placeholder="0,00" />
@@ -312,7 +312,7 @@ function MeusProjetosPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="parcelas">Nº Parcelas Restante</Label>
                 <Input id="parcelas" type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} min="1" />
@@ -353,7 +353,7 @@ function MeusProjetosPage() {
             <DialogTitle>Venda Perdida</DialogTitle>
             <DialogDescription>Qual o motivo de não ter fechado com o cliente?</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-3 py-1">
             <Select value={motivoPerda} onValueChange={setMotivoPerda}>
               <SelectTrigger><SelectValue placeholder="Selecione o motivo..." /></SelectTrigger>
               <SelectContent>

@@ -339,16 +339,16 @@ function AgendaPage() {
               Novo Agendamento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[450px]">
+          <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle>{editingEventId ? 'Editar Compromisso' : 'Agendar Compromisso'}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-5 py-4">
+            <div className="grid gap-3 py-2">
               <div className="grid gap-2">
                 <Label htmlFor="titulo">Título</Label>
                 <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({...formData, titulo: e.target.value})} placeholder="Ex: Reunião de Briefing" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="data">Data</Label>
                   <Input id="data" type="date" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} />
@@ -367,7 +367,7 @@ function AgendaPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="inicio">Hora início</Label>
                   <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
