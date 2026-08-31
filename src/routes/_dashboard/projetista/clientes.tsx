@@ -83,8 +83,9 @@ function ProjetistaClientesPage() {
   const [clientForm, setClientForm] = useState({
     nome: "",
     telefone: "",
-    email: "",
-    endereco: "",
+    fonte: "",
+    nome_arquiteto: "",
+    rt_arquiteto: "",
   });
 
   const [projectForm, setProjectForm] = useState({
@@ -136,8 +137,8 @@ function ProjetistaClientesPage() {
           {
             nome: data.nome.trim(),
             telefone: data.telefone.trim(),
-            email: data.email.trim() || null,
-            endereco: data.endereco.trim() || null,
+            email: null,
+            endereco: null,
             projetista_id: isAdmin ? null : user.id,
           },
         ])
@@ -145,15 +146,41 @@ function ProjetistaClientesPage() {
         .single();
       console.log("[clientes] insert result", { inserted, error });
       if (error) throw error;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const initialProject: TablesInsert<"projetos"> = {
+        cliente_id: inserted.id,
+        projetista_id: null,
+        status: "PRONTO" as const,
+        status_venda: "EM_NEGOCIACAO" as const,
+        data_inicio: today,
+        prazo_termino: today,
+        nome: null,
+        fonte: data.fonte,
+        nome_arquiteto: data.fonte === "ARQUITETO" ? data.nome_arquiteto.trim() || null : null,
+        rt_arquiteto:
+          data.fonte === "ARQUITETO" && data.rt_arquiteto
+            ? parseFloat(data.rt_arquiteto)
+            : null,
+      };
+      const { error: projectError } = await supabase.from("projetos").insert([initialProject]);
+      if (projectError) throw projectError;
       return inserted as { id: string; nome: string };
     },
-    onSuccess: (created) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
-      setClientForm({ nome: "", telefone: "", email: "", endereco: "" });
-      setPendingClient(created);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["distribution-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-operation"] });
+      setClientForm({
+        nome: "",
+        telefone: "",
+        fonte: "",
+        nome_arquiteto: "",
+        rt_arquiteto: "",
+      });
       setIsClientDialogOpen(false);
-      toast.success("Cliente salvo. Agora complete os dados do projeto.");
-      window.setTimeout(() => setIsProjectDialogOpen(true), 180);
+      toast.success("Cliente adicionado com sucesso!");
     },
     onError: (e: unknown) => {
       console.error("[clientes] insert error", e);
@@ -177,10 +204,9 @@ function ProjetistaClientesPage() {
         observacoes: data.observacoes || null,
         nome: data.nome.trim() || null,
         fonte: data.fonte || null,
-        nome_arquiteto:
-          data.fonte === "ARQUITETO" || data.fonte === "INDICACAO" ? data.nome_arquiteto : null,
+        nome_arquiteto: data.fonte === "ARQUITETO" ? data.nome_arquiteto : null,
         rt_arquiteto:
-          data.fonte === "ARQUITETO" || data.fonte === "INDICACAO"
+          data.fonte === "ARQUITETO"
             ? data.rt_arquiteto
               ? parseFloat(data.rt_arquiteto)
               : null
@@ -275,6 +301,14 @@ function ProjetistaClientesPage() {
       toast.error("Informe o WhatsApp do cliente.");
       return;
     }
+    if (!clientForm.fonte) {
+      toast.error("Informe de onde veio o cliente.");
+      return;
+    }
+    if (clientForm.fonte === "ARQUITETO" && !clientForm.nome_arquiteto.trim()) {
+      toast.error("Informe o nome do arquiteto.");
+      return;
+    }
     if (!user?.id) {
       toast.error("Sessão inválida. Faça login novamente.");
       return;
@@ -325,14 +359,14 @@ function ProjetistaClientesPage() {
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="mr-2 h-4 w-4" />
-                Novo atendimento
+                Adicionar cliente
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Cadastrar novo atendimento</DialogTitle>
+                <DialogTitle>Adicionar cliente</DialogTitle>
                 <DialogDescription>
-                  Primeiro registre o cliente. Na etapa seguinte, informe a origem e o projeto.
+                  Informe os dados básicos e de onde veio este cliente.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-3 py-2">
@@ -346,40 +380,75 @@ function ProjetistaClientesPage() {
                     onChange={(e) => setClientForm({ ...clientForm, nome: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="tel">
-                      WhatsApp <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="tel"
-                      placeholder="(00) 00000-0000"
-                      value={clientForm.telefone}
-                      onChange={(e) => setClientForm({ ...clientForm, telefone: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={clientForm.email}
-                      onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                    />
-                  </div>
-                </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="end">Endereço</Label>
+                  <Label htmlFor="tel">
+                    Telefone / WhatsApp <span className="text-destructive">*</span>
+                  </Label>
                   <Input
-                    id="end"
-                    value={clientForm.endereco}
-                    onChange={(e) => setClientForm({ ...clientForm, endereco: e.target.value })}
+                    id="tel"
+                    placeholder="(00) 00000-0000"
+                    value={clientForm.telefone}
+                    onChange={(e) => setClientForm({ ...clientForm, telefone: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label>Origem do cliente</Label>
+                  <Select
+                    value={clientForm.fonte}
+                    onValueChange={(fonte) =>
+                      setClientForm({
+                        ...clientForm,
+                        fonte,
+                        nome_arquiteto: fonte === "ARQUITETO" ? clientForm.nome_arquiteto : "",
+                        rt_arquiteto: fonte === "ARQUITETO" ? clientForm.rt_arquiteto : "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONTES.map((fonte) => (
+                        <SelectItem key={fonte.value} value={fonte.value}>
+                          {fonte.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {clientForm.fonte === "ARQUITETO" && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="client-architect">Nome do arquiteto</Label>
+                      <Input
+                        id="client-architect"
+                        placeholder="Ex: João Silva"
+                        value={clientForm.nome_arquiteto}
+                        onChange={(e) =>
+                          setClientForm({ ...clientForm, nome_arquiteto: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="client-commission">% de comissão</Label>
+                      <Input
+                        id="client-commission"
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="Ex: 10"
+                        value={clientForm.rt_arquiteto}
+                        onChange={(e) =>
+                          setClientForm({ ...clientForm, rt_arquiteto: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button onClick={handleSaveClient} disabled={createClient.isPending}>
-                  {createClient.isPending ? "Salvando cliente..." : "Salvar cliente e continuar"}
+                  {createClient.isPending ? "Salvando cliente..." : "Salvar cliente"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -387,7 +456,7 @@ function ProjetistaClientesPage() {
         </div>
       </div>
 
-      {/* Project dialog (opens after saving client OR via row action) */}
+      {/* Project dialog opened from a client's row action. */}
       <Dialog
         open={isProjectDialogOpen}
         onOpenChange={(open) => {
@@ -430,7 +499,7 @@ function ProjetistaClientesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {(projectForm.fonte === "ARQUITETO" || projectForm.fonte === "INDICACAO") && (
+            {projectForm.fonte === "ARQUITETO" && (
               <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="nome-arquiteto">Nome do Arquiteto / Parceiro</Label>

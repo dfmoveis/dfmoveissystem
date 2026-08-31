@@ -39,7 +39,7 @@ export function useAdminStats() {
         }, 0);
 
       const totalRTs = (projetos as any[])
-        .filter(p => p.status_venda === 'VENDEU' && (p.fonte === 'ARQUITETO' || p.fonte === 'INDICACAO'))
+        .filter(p => p.status_venda === 'VENDEU' && p.fonte === 'ARQUITETO')
         .reduce((acc, p) => {
           const valor = Number(p.valor_venda) || 0;
           const rt = Number(p.rt_arquiteto) || 0;
