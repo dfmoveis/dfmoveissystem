@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +42,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   deadlineState,
   formatDate,
-  initials,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_STYLES,
   SOURCE_LABELS,
@@ -478,13 +478,11 @@ function DistributionPage() {
                 key={designer.id}
                 className="flex items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-1.5 pr-3"
               >
-                <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-[9px] font-bold text-white">
-                  {designer.avatar_url ? (
-                    <img src={designer.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initials(designer.nome)
-                  )}
-                </div>
+                <UserAvatar
+                  src={designer.avatar_url}
+                  name={designer.nome}
+                  className="h-7 w-7 rounded-full"
+                />
                 <span className="text-xs font-medium text-slate-700">{designer.nome}</span>
                 <Badge variant="secondary" className="h-5 rounded-full px-1.5 text-[10px]">
                   {workload[designer.id] ?? 0}
@@ -640,17 +638,11 @@ function DistributionPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-900 text-[10px] font-bold text-white">
-                      {project.projetista?.avatar_url ? (
-                        <img
-                          src={project.projetista.avatar_url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        initials(project.projetista?.nome ?? "Sem responsável")
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={project.projetista?.avatar_url}
+                      name={project.projetista?.nome ?? "Sem responsável"}
+                      className="h-9 w-9 rounded-lg"
+                    />
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-slate-800">
                         {project.projetista?.nome ?? "Aguardando distribuição"}

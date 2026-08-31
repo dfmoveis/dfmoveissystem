@@ -138,7 +138,7 @@ function ProjetistaClientesPage() {
             telefone: data.telefone.trim(),
             email: data.email.trim() || null,
             endereco: data.endereco.trim() || null,
-            projetista_id: null,
+            projetista_id: isAdmin ? null : user.id,
           },
         ])
         .select("id, nome")
@@ -150,10 +150,10 @@ function ProjetistaClientesPage() {
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
       setClientForm({ nome: "", telefone: "", email: "", endereco: "" });
-      setIsClientDialogOpen(false);
-      toast.success("Cliente cadastrado! Agora preencha os dados do projeto.");
       setPendingClient(created);
-      setIsProjectDialogOpen(true);
+      setIsClientDialogOpen(false);
+      toast.success("Cliente salvo. Agora complete os dados do projeto.");
+      window.setTimeout(() => setIsProjectDialogOpen(true), 180);
     },
     onError: (e: unknown) => {
       console.error("[clientes] insert error", e);
@@ -203,7 +203,9 @@ function ProjetistaClientesPage() {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["demandas-orfas"] });
+      queryClient.invalidateQueries({ queryKey: ["distribution-projects"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-operation"] });
       toast.success(
         res.assigned
           ? "Atendimento cadastrado e enviado para aceite da projetista!"
@@ -377,7 +379,7 @@ function ProjetistaClientesPage() {
               </div>
               <DialogFooter>
                 <Button onClick={handleSaveClient} disabled={createClient.isPending}>
-                  {createClient.isPending ? "Salvando..." : "Salvar e continuar"}
+                  {createClient.isPending ? "Salvando cliente..." : "Salvar cliente e continuar"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -528,7 +530,7 @@ function ProjetistaClientesPage() {
           </div>
           <DialogFooter>
             <Button onClick={handleSaveProject} disabled={createProject.isPending}>
-              {createProject.isPending ? "Salvando..." : "Criar Projeto"}
+              {createProject.isPending ? "Salvando atendimento..." : "Salvar atendimento"}
             </Button>
           </DialogFooter>
         </DialogContent>

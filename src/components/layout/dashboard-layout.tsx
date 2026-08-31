@@ -17,6 +17,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import logoDF from "@/assets/logo-df.png";
+import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,7 +43,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuthStore, validateStoredAccess } from "@/hooks/use-auth";
 import { useAdminApprovals } from "@/hooks/use-admin-approvals";
-import { initials } from "@/lib/project-utils";
 
 const PAGE_TITLES: Record<string, string> = {
   "/admin/dashboard": "Visão da operação",
@@ -232,17 +232,12 @@ export function DashboardLayout() {
 
           <SidebarFooter className="border-t border-white/10 p-3">
             <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#c92031] text-xs font-bold text-white">
-                {user?.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.nome}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  initials(user?.nome)
-                )}
-              </div>
+              <UserAvatar
+                src={user?.avatar_url}
+                name={user?.nome}
+                className="h-9 w-9 rounded-lg bg-[#c92031]"
+                iconClassName="h-[18px] w-[18px]"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-semibold text-white">{user?.nome}</p>
                 <p className="truncate text-[10px] text-white/40">
@@ -339,9 +334,11 @@ export function DashboardLayout() {
                 key={item.id}
                 className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#c92031]/10 text-xs font-bold text-[#c92031]">
-                  {initials(item.title)}
-                </div>
+                <UserAvatar
+                  name={item.title}
+                  className="h-9 w-9 rounded-lg bg-[#c92031]/10 text-[#c92031]"
+                  iconClassName="h-[18px] w-[18px]"
+                />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900">{item.title}</p>
                   <p className="truncate text-xs text-slate-500">{item.description}</p>

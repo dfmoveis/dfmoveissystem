@@ -17,11 +17,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { UserAvatar } from "@/components/user-avatar";
 import { supabase } from "@/integrations/supabase/client";
 import {
   deadlineState,
   formatDate,
-  initials,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_STYLES,
 } from "@/lib/project-utils";
@@ -311,9 +311,11 @@ function AdminDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900 text-[9px] font-bold text-white">
-                        {initials(project.projetista?.nome ?? "Sem responsável")}
-                      </div>
+                      <UserAvatar
+                        src={project.projetista?.avatar_url}
+                        name={project.projetista?.nome ?? "Sem responsável"}
+                        className="h-7 w-7 rounded-lg"
+                      />
                       <span className="truncate text-xs text-slate-600">
                         {project.projetista?.nome ?? "Sem responsável"}
                       </span>
@@ -398,13 +400,11 @@ function AdminDashboard() {
           {workload.map((designer) => (
             <div key={designer.id} className="workspace-card p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-xs font-bold text-white">
-                  {designer.avatar_url ? (
-                    <img src={designer.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initials(designer.nome)
-                  )}
-                </div>
+                <UserAvatar
+                  src={designer.avatar_url}
+                  name={designer.nome}
+                  className="h-11 w-11 rounded-xl"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-800">{designer.nome}</p>
                   <p className="text-[11px] text-slate-400">Projetista</p>
