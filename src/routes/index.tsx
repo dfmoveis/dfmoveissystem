@@ -25,7 +25,7 @@ function LoginLogo({ className }: { className: string }) {
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-[11%] top-[68.8%] h-[3.2%] w-[3.5%] bg-[#191c21]"
+        className="pointer-events-none absolute left-[10%] top-[70%] h-[3.5%] w-[2.5%] bg-[#191c21]"
       />
     </span>
   );
