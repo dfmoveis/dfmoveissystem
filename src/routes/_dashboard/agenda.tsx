@@ -70,16 +70,20 @@ interface AgendaEvent {
   tipo: string;
   status: string;
   cliente_id: string | null;
+  criado_por_id: string;
   criado_por: { nome: string } | null;
   cliente: { nome: string } | null;
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'erro desconhecido';
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
+  return 'erro desconhecido';
 }
 
 function AgendaPage() {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+  const isAdmin = role === 'ADMIN';
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -100,7 +104,7 @@ function AgendaPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('agendamentos')
-        .select('*, criado_por:users(nome), cliente:clientes(nome)')
+        .select('id, titulo, descricao, data_inicio, data_fim, tipo, status, cliente_id, criado_por_id:criado_por, criado_por:users(nome), cliente:clientes(nome)')
         .order('data_inicio', { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as AgendaEvent[];
@@ -196,9 +200,13 @@ function AgendaPage() {
         throw new Error('O horário final precisa ser posterior ao horário inicial.');
       }
 
+      const scheduleOwnerId = editingEventId
+        ? events?.find((item) => item.id === editingEventId)?.criado_por_id ?? user.id
+        : user.id;
       const conflictingMeeting = event.tipo === 'REUNIAO' ? events?.find(e => {
         if (editingEventId && e.id === editingEventId) return false;
         if (e.tipo !== 'REUNIAO') return false;
+        if (e.criado_por_id !== scheduleOwnerId) return false;
         
         const eStart = parseISO(e.data_inicio);
         const eEnd = parseISO(e.data_fim);
@@ -227,11 +235,18 @@ function AgendaPage() {
         data_fim: data_fim.toISOString(),
         tipo: event.tipo,
         cliente_id: event.cliente_id || null,
-        criado_por: user.id,
       };
 
       if (editingEventId) {
-        const { error } = await supabase.from('agendamentos').update(payload).eq('id', editingEventId);
+        const targetEvent = events?.find((item) => item.id === editingEventId);
+        if (!targetEvent) throw new Error('Agendamento não encontrado.');
+        if (!isAdmin && targetEvent.criado_por_id !== user.id) {
+          throw new Error('Você só pode alterar os agendamentos que criou.');
+        }
+
+        let updateQuery = supabase.from('agendamentos').update(payload).eq('id', editingEventId);
+        if (!isAdmin) updateQuery = updateQuery.eq('criado_por', user.id);
+        const { data: updated, error } = await updateQuery.select('id').maybeSingle();
         if (error) {
           console.error('[agenda] update error', error);
           if (error.code === '23P01' && event.tipo === 'REUNIAO') {
@@ -239,8 +254,9 @@ function AgendaPage() {
           }
           throw error;
         }
+        if (!updated) throw new Error('Você não tem permissão para alterar este agendamento.');
       } else {
-        const { error } = await supabase.from('agendamentos').insert([payload]);
+        const { error } = await supabase.from('agendamentos').insert([{ ...payload, criado_por: user.id }]);
         if (error) {
           console.error('[agenda] insert error', error);
           if (error.code === '23P01' && event.tipo === 'REUNIAO') {
@@ -263,9 +279,16 @@ function AgendaPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('agendamentos').delete().eq('id', id);
+    mutationFn: async (event: AgendaEvent) => {
+      if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
+      if (!isAdmin && event.criado_por_id !== user.id) {
+        throw new Error('Você só pode excluir os agendamentos que criou.');
+      }
+      let deleteQuery = supabase.from('agendamentos').delete().eq('id', event.id);
+      if (!isAdmin) deleteQuery = deleteQuery.eq('criado_por', user.id);
+      const { data: deleted, error } = await deleteQuery.select('id').maybeSingle();
       if (error) throw error;
+      if (!deleted) throw new Error('Você não tem permissão para excluir este agendamento.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
@@ -277,12 +300,19 @@ function AgendaPage() {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
+    mutationFn: async (event: AgendaEvent) => {
+      if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
+      if (!isAdmin && event.criado_por_id !== user.id) {
+        throw new Error('Você só pode confirmar os agendamentos que criou.');
+      }
+      let confirmQuery = supabase
         .from('agendamentos')
         .update({ status: 'CONFIRMADO' })
-        .eq('id', id);
+        .eq('id', event.id);
+      if (!isAdmin) confirmQuery = confirmQuery.eq('criado_por', user.id);
+      const { data: confirmed, error } = await confirmQuery.select('id').maybeSingle();
       if (error) throw error;
+      if (!confirmed) throw new Error('Você não tem permissão para confirmar este agendamento.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
@@ -294,6 +324,10 @@ function AgendaPage() {
   });
 
   const handleEdit = (event: AgendaEvent) => {
+    if (!isAdmin && event.criado_por_id !== user?.id) {
+      toast.error('Você só pode alterar os agendamentos que criou.');
+      return;
+    }
     const start = parseISO(event.data_inicio);
     const end = parseISO(event.data_fim);
     setFormData({
@@ -309,9 +343,13 @@ function AgendaPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (event: AgendaEvent) => {
+    if (!isAdmin && event.criado_por_id !== user?.id) {
+      toast.error('Você só pode excluir os agendamentos que criou.');
+      return;
+    }
     if (confirm('Deseja realmente cancelar este agendamento?')) {
-      deleteMutation.mutate(id);
+      deleteMutation.mutate(event);
     }
   };
 
@@ -322,7 +360,8 @@ function AgendaPage() {
           <p className="workspace-eyebrow">Um calendário para toda a equipe</p>
           <h1 className="workspace-title mt-2">Agenda compartilhada</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Todos enxergam os mesmos horários. Somente reuniões reservam o horário para toda a equipe.
+            Todos enxergam os compromissos. Cada projetista administra somente a própria agenda; o
+            superusuário pode administrar todas.
           </p>
         </div>
         
@@ -388,8 +427,8 @@ function AgendaPage() {
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   {formData.tipo === 'REUNIAO'
-                    ? 'Reuniões não podem ocupar o mesmo horário de outra reunião já marcada.'
-                    : 'Este compromisso pode coincidir com outro horário, pois é individual de cada projetista.'}
+                    ? 'A reunião pode coincidir com a agenda de outro projetista, mas não com outra reunião sua.'
+                    : 'Este compromisso pode coincidir com outros horários, pois cada projetista possui sua própria agenda.'}
                 </span>
               </div>
               <div className="grid gap-2">
@@ -476,6 +515,7 @@ function AgendaPage() {
             <div className="grid gap-3">
               {filteredEvents.map((event) => {
                 const isConfirmed = event.status === 'CONFIRMADO';
+                const canManage = isAdmin || event.criado_por_id === user?.id;
                 return (
                 <Card key={event.id} className={cn("hover:shadow-md transition-all border-l-4 overflow-hidden group", isConfirmed && "ring-2 ring-emerald-400/60 bg-emerald-50/30")} style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
                   <CardContent className="p-4 flex items-center justify-between">
@@ -512,26 +552,28 @@ function AgendaPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      {!isConfirmed && (
+                      {!isConfirmed && canManage && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-8 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => confirmMutation.mutate(event.id)}
+                          onClick={() => confirmMutation.mutate(event)}
                           disabled={confirmMutation.isPending}
                         >
                           <Check className="h-4 w-4 mr-1" />
                           Confirmar
                         </Button>
                       )}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {canManage && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
