@@ -62,8 +62,8 @@ function DesignerDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["designer-operation", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { projects: [], agenda: [] };
-      const [projectResult, agendaResult] = await Promise.all([
+      if (!user?.id) return { projects: [], agenda: [], clientCount: 0 };
+      const [projectResult, agendaResult, clientResult] = await Promise.all([
         supabase
           .from("projetos")
           .select(
@@ -77,12 +77,15 @@ function DesignerDashboard() {
           .gte("data_inicio", new Date().toISOString())
           .order("data_inicio", { ascending: true })
           .limit(4),
+        supabase.from("clientes").select("id", { count: "exact", head: true }),
       ]);
       if (projectResult.error) throw projectResult.error;
       if (agendaResult.error) throw agendaResult.error;
+      if (clientResult.error) throw clientResult.error;
       return {
         projects: (projectResult.data ?? []) as unknown as DesignerProject[],
         agenda: (agendaResult.data ?? []) as unknown as AgendaItem[],
+        clientCount: clientResult.count ?? 0,
       };
     },
     enabled: Boolean(user?.id),
@@ -103,8 +106,6 @@ function DesignerDashboard() {
     [projects],
   );
 
-  const uniqueClients = new Set(projects.map((project) => project.cliente?.id).filter(Boolean))
-    .size;
   const cards = [
     {
       label: "Aguardando liberação",
@@ -136,8 +137,8 @@ function DesignerDashboard() {
       style: "bg-slate-100 text-slate-700",
     },
     {
-      label: "Clientes na carteira",
-      value: uniqueClients,
+      label: "Clientes cadastrados",
+      value: data?.clientCount ?? 0,
       icon: ContactRound,
       style: "bg-amber-50 text-amber-700",
     },

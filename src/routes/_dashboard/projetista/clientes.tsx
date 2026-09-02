@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Star, Plus, Hand, X } from "lucide-react";
 import {
@@ -58,6 +58,7 @@ interface ClienteRow {
     prazo_termino: string;
     status: string;
     created_at: string | null;
+    projetista_id: string | null;
   }>;
 }
 
@@ -116,7 +117,7 @@ function ProjetistaClientesPage() {
       const { data, error } = await supabase
         .from("clientes")
         .select(
-          "id, nome, email, telefone, endereco, created_at, projetista_id, projetista:projetista_id(id, nome), projetos(id, nome, prazo_termino, status, created_at)",
+          "id, nome, email, telefone, endereco, created_at, projetista_id, projetista:projetista_id(id, nome), projetos(id, nome, prazo_termino, status, created_at, projetista_id)",
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -136,6 +137,21 @@ function ProjetistaClientesPage() {
       return data ?? [];
     },
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("clientes-compartilhados")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "clientes" },
+        () => queryClient.invalidateQueries({ queryKey: ["clientes-global"] }),
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const createClient = useMutation({
     mutationFn: async (data: typeof clientForm) => {
@@ -326,9 +342,7 @@ function ProjetistaClientesPage() {
     createProject.mutate(projectForm);
   };
 
-  const visibleClientes = isAdmin
-    ? clientes
-    : clientes?.filter((cliente) => cliente.projetista_id === user?.id);
+  const visibleClientes = clientes;
 
   return (
     <div className="space-y-6">
@@ -337,9 +351,8 @@ function ProjetistaClientesPage() {
           <p className="workspace-eyebrow">Entrada da operação</p>
           <h1 className="workspace-title mt-2">Clientes e novos atendimentos</h1>
           <p className="mt-2 text-sm text-slate-500">
-            {isAdmin
-              ? "Cadastre o cliente, registre a origem e encaminhe o primeiro projeto."
-              : "Sua carteira mostra apenas os clientes vinculados aos seus projetos."}
+            Cadastre clientes e consulte a base compartilhada por toda a equipe. Os projetos
+            continuam visíveis apenas para o profissional liberado pelo superusuário.
           </p>
         </div>
 
@@ -580,7 +593,7 @@ function ProjetistaClientesPage() {
 
       <Card className="workspace-card border-0 shadow-none">
         <CardHeader>
-          <CardTitle>{isAdmin ? "Base de clientes" : "Minha carteira de clientes"}</CardTitle>
+          <CardTitle>Base compartilhada de clientes</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -622,13 +635,22 @@ function ProjetistaClientesPage() {
                       </TableCell>
                       <TableCell>
                         {(() => {
-                          const latestProject = [...(c.projetos ?? [])].sort(
+                          const allowedProjects = isAdmin
+                            ? c.projetos ?? []
+                            : (c.projetos ?? []).filter(
+                                (project) => project.projetista_id === user?.id,
+                              );
+                          const latestProject = [...allowedProjects].sort(
                             (first, second) =>
                               new Date(second.created_at ?? 0).getTime() -
                               new Date(first.created_at ?? 0).getTime(),
                           )[0];
                           if (!latestProject) {
-                            return <span className="text-xs text-slate-400">Sem projeto</span>;
+                            return (
+                              <span className="text-xs text-slate-400">
+                                {isAdmin ? "Sem projeto" : "Nenhum projeto liberado para você"}
+                              </span>
+                            );
                           }
                           const statusLabels: Record<string, string> = {
                             PRONTO: "Pronto",
