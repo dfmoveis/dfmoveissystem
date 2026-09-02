@@ -68,7 +68,17 @@ const FONTES = [
 ];
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "erro desconhecido";
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    return String(error.message);
+  }
+  return "erro desconhecido";
+}
+
+function projectObservations(observacoes: string, fonte: string, nomeArquiteto: string) {
+  const notes = observacoes.trim();
+  const architect = fonte === "ARQUITETO" ? nomeArquiteto.trim() : "";
+  return [architect ? `Arquiteto: ${architect}` : "", notes].filter(Boolean).join("\n") || null;
 }
 
 function ProjetistaClientesPage() {
@@ -157,7 +167,7 @@ function ProjetistaClientesPage() {
         prazo_termino: today,
         nome: null,
         fonte: data.fonte,
-        nome_arquiteto: data.fonte === "ARQUITETO" ? data.nome_arquiteto.trim() || null : null,
+        observacoes: projectObservations("", data.fonte, data.nome_arquiteto),
         rt_arquiteto:
           data.fonte === "ARQUITETO" && data.rt_arquiteto
             ? parseFloat(data.rt_arquiteto)
@@ -167,11 +177,7 @@ function ProjetistaClientesPage() {
       if (projectError) throw projectError;
       return inserted as { id: string; nome: string };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["distribution-projects"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-operation"] });
+    onSuccess: async () => {
       setClientForm({
         nome: "",
         telefone: "",
@@ -180,6 +186,12 @@ function ProjetistaClientesPage() {
         rt_arquiteto: "",
       });
       setIsClientDialogOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["clientes-global"] }),
+        queryClient.invalidateQueries({ queryKey: ["projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["distribution-projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-operation"] }),
+      ]);
       toast.success("Cliente adicionado com sucesso!");
     },
     onError: (e: unknown) => {
@@ -201,10 +213,9 @@ function ProjetistaClientesPage() {
         data_inicio: data.data_inicio || today,
         prazo_termino: data.prazo_termino || data.data_inicio || today,
         valor_venda: data.valor_venda ? parseFloat(data.valor_venda) : null,
-        observacoes: data.observacoes || null,
+        observacoes: projectObservations(data.observacoes, data.fonte, data.nome_arquiteto),
         nome: data.nome.trim() || null,
         fonte: data.fonte || null,
-        nome_arquiteto: data.fonte === "ARQUITETO" ? data.nome_arquiteto : null,
         rt_arquiteto:
           data.fonte === "ARQUITETO"
             ? data.rt_arquiteto

@@ -75,6 +75,11 @@ interface Designer {
   avatar_url: string | null;
 }
 
+function architectFromNotes(project: Pick<DistributionProject, "fonte" | "observacoes">) {
+  if (project.fonte !== "ARQUITETO") return null;
+  return project.observacoes?.match(/^Arquiteto:\s*(.+)$/m)?.[1]?.trim() || null;
+}
+
 type StatusFilter = "TODOS" | "SEM_RESPONSAVEL" | ProjectStatus;
 
 function effectiveStatus(project: DistributionProject): ProjectStatus {
@@ -104,7 +109,7 @@ function DistributionPage() {
     queryKey: ["distribution-projects", isAdmin ? "all" : user?.id],
     queryFn: async () => {
       const fields =
-        "id, cliente_id, nome, fonte, nome_arquiteto, data_inicio, prazo_termino, status, estagio_andamento, observacoes, created_at, projetista_id, cliente:clientes(id, nome, telefone), projetista:users(id, nome, avatar_url)";
+        "id, cliente_id, nome, fonte, data_inicio, prazo_termino, status, estagio_andamento, observacoes, created_at, projetista_id, cliente:clientes(id, nome, telefone), projetista:users(id, nome, avatar_url)";
 
       if (isAdmin) {
         const { data, error } = await supabase
@@ -112,7 +117,10 @@ function DistributionPage() {
           .select(fields)
           .order("created_at", { ascending: false });
         if (error) throw error;
-        return (data ?? []) as unknown as DistributionProject[];
+        return (data ?? []).map((project) => ({
+          ...project,
+          nome_arquiteto: architectFromNotes(project),
+        })) as unknown as DistributionProject[];
       }
 
       if (!user?.id) return [];
@@ -135,7 +143,10 @@ function DistributionPage() {
       return [
         ...(ownResult.data ?? []),
         ...(nextResult.data ?? []),
-      ] as unknown as DistributionProject[];
+      ].map((project) => ({
+        ...project,
+        nome_arquiteto: architectFromNotes(project),
+      })) as unknown as DistributionProject[];
     },
     enabled: isAdmin || Boolean(user?.id),
   });
