@@ -170,7 +170,7 @@ function AdminDashboard() {
       style: "bg-amber-50 text-amber-700",
     },
     {
-      label: "Aguardando aceite",
+      label: "Distribuições pendentes antigas",
       value: projects.filter((project) => project.projetista_id && project.status === "PRONTO")
         .length,
       description: "solicitações enviadas",

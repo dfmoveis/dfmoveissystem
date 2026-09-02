@@ -107,7 +107,7 @@ function DesignerDashboard() {
     .size;
   const cards = [
     {
-      label: "Aguardando meu aceite",
+      label: "Aguardando liberação",
       value: projects.filter((project) => project.status === "PRONTO").length,
       icon: UserRoundCheck,
       style: "bg-violet-50 text-violet-700",
@@ -158,8 +158,8 @@ function DesignerDashboard() {
               Olá, {user?.nome?.split(" ")[0]}.
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-white/55">
-              Aceite os projetos enviados pelo dono ou assuma somente o próximo item livre da fila.
-              Depois, mantenha cada etapa avançando.
+              Os projetos liberados pelo superusuário aparecem na sua área de trabalho. Depois,
+              mantenha cada etapa avançando.
             </p>
           </div>
           <Button asChild className="bg-[#c92031] text-white hover:bg-[#aa1726]">
@@ -230,7 +230,7 @@ function DesignerDashboard() {
                       }`}
                     >
                       {project.status === "PRONTO"
-                        ? "Aguardando seu aceite"
+                        ? "Liberado pela gestão"
                         : PROJECT_STATUS_LABELS[status]}
                     </Badge>
                     <div className="sm:text-right">

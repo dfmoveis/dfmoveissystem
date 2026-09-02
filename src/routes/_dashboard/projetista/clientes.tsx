@@ -204,10 +204,9 @@ function ProjetistaClientesPage() {
     mutationFn: async (data: typeof projectForm) => {
       if (!user?.id || !pendingClient) throw new Error("Cliente não selecionado.");
       const today = new Date().toISOString().slice(0, 10);
-      const assignedDesignerId = isAdmin && data.projetista_id ? data.projetista_id : null;
       const payload: TablesInsert<"projetos"> = {
         cliente_id: pendingClient.id,
-        projetista_id: assignedDesignerId,
+        projetista_id: null,
         status: "PRONTO" as const,
         status_venda: "EM_NEGOCIACAO" as const,
         data_inicio: data.data_inicio || today,
@@ -229,25 +228,13 @@ function ProjetistaClientesPage() {
         console.error("[projetos] insert error", error);
         throw error;
       }
-      if (assignedDesignerId) {
-        const { error: clientError } = await supabase
-          .from("clientes")
-          .update({ projetista_id: assignedDesignerId })
-          .eq("id", pendingClient.id);
-        if (clientError) throw clientError;
-      }
-      return { assigned: Boolean(assignedDesignerId) };
     },
-    onSuccess: (res) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["distribution-projects"] });
       queryClient.invalidateQueries({ queryKey: ["clientes-global"] });
       queryClient.invalidateQueries({ queryKey: ["admin-operation"] });
-      toast.success(
-        res.assigned
-          ? "Atendimento cadastrado e enviado para aceite da projetista!"
-          : "Atendimento cadastrado e enviado ao superusuário para distribuição!",
-      );
+      toast.success("Projeto cadastrado e enviado ao superusuário para distribuição!");
       setProjectForm({
         nome: "",
         fonte: "",
@@ -535,31 +522,6 @@ function ProjetistaClientesPage() {
                     }
                   />
                 </div>
-              </div>
-            )}
-            {isAdmin && (
-              <div className="grid gap-2 rounded-xl border border-[#cbb27a]/30 bg-[#fbf7eb] p-3 sm:col-span-2">
-                <Label>Projetista responsável</Label>
-                <Select
-                  value={projectForm.projetista_id}
-                  onValueChange={(value) =>
-                    setProjectForm({ ...projectForm, projetista_id: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Deixar para distribuir depois" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projetistas?.map((projetista) => (
-                      <SelectItem key={projetista.id} value={projetista.id}>
-                        {projetista.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-[#7a6740]">
-                  Se não escolher agora, o projeto ficará na Central de Distribuição.
-                </p>
               </div>
             )}
             <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2">

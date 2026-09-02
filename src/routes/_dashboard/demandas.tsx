@@ -103,7 +103,6 @@ function DistributionPage() {
   const [selectedProject, setSelectedProject] = useState<DistributionProject | null>(null);
   const [designerId, setDesignerId] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [claimDeadline, setClaimDeadline] = useState("");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["distribution-projects", isAdmin ? "all" : user?.id],
@@ -124,26 +123,13 @@ function DistributionPage() {
       }
 
       if (!user?.id) return [];
-      const [ownResult, nextResult] = await Promise.all([
-        supabase
-          .from("projetos")
-          .select(fields)
-          .eq("projetista_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("projetos")
-          .select(fields)
-          .is("projetista_id", null)
-          .eq("status", "PRONTO")
-          .order("created_at", { ascending: true })
-          .limit(1),
-      ]);
+      const ownResult = await supabase
+        .from("projetos")
+        .select(fields)
+        .eq("projetista_id", user.id)
+        .order("created_at", { ascending: false });
       if (ownResult.error) throw ownResult.error;
-      if (nextResult.error) throw nextResult.error;
-      return [
-        ...(ownResult.data ?? []),
-        ...(nextResult.data ?? []),
-      ].map((project) => ({
+      return (ownResult.data ?? []).map((project) => ({
         ...project,
         nome_arquiteto: architectFromNotes(project),
       })) as unknown as DistributionProject[];
@@ -181,15 +167,6 @@ function DistributionPage() {
   const ownProjects = useMemo(
     () => (isAdmin ? projects : projects.filter((project) => project.projetista_id === user?.id)),
     [isAdmin, projects, user?.id],
-  );
-
-  const nextAvailableProject = useMemo(
-    () =>
-      isAdmin
-        ? null
-        : (projects.find((project) => !project.projetista_id && project.status === "PRONTO") ??
-          null),
-    [isAdmin, projects],
   );
 
   const visibleProjects = useMemo(() => {
@@ -239,8 +216,8 @@ function DistributionPage() {
         .update({
           projetista_id: designerId,
           prazo_termino: deadline,
-          status: "PRONTO",
-          estagio_andamento: "Aguardando aceite da projetista",
+          status: "EM_EXECUCAO",
+          estagio_andamento: "Briefing e levantamento",
         })
         .eq("id", selectedProject.id);
       if (error) throw error;
@@ -253,86 +230,15 @@ function DistributionPage() {
 
       await addHistory(
         selectedProject.id,
-        `Projeto reservado pelo superusuário para ${designer?.nome ?? "projetista"}, aguardando aceite, com prazo em ${formatDate(deadline)}.`,
+        `Projeto liberado pelo superusuário para ${designer?.nome ?? "projetista"}, com prazo em ${formatDate(deadline)}.`,
       );
     },
     onSuccess: () => {
       invalidateOperation();
-      toast.success("Solicitação enviada para a projetista aceitar.");
+      toast.success("Projeto liberado para a projetista.");
       setSelectedProject(null);
     },
     onError: (error: Error) => toast.error(error.message),
-  });
-
-  const acceptAssignedProject = useMutation({
-    mutationFn: async (project: DistributionProject) => {
-      if (!user?.id || isAdmin) throw new Error("Ação disponível apenas para projetistas.");
-      const { data, error } = await supabase
-        .from("projetos")
-        .update({
-          status: "EM_EXECUCAO",
-          estagio_andamento: "Briefing e levantamento",
-        })
-        .eq("id", project.id)
-        .eq("projetista_id", user.id)
-        .eq("status", "PRONTO")
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error("Esta solicitação não está mais disponível para aceite.");
-      await addHistory(project.id, `${user.nome} aceitou a solicitação enviada pelo superusuário.`);
-    },
-    onSuccess: () => {
-      invalidateOperation();
-      toast.success("Projeto aceito e iniciado.");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const claimNextProject = useMutation({
-    mutationFn: async () => {
-      if (!user?.id || isAdmin) throw new Error("Ação disponível apenas para projetistas.");
-      if (!nextAvailableProject) throw new Error("Não há projeto livre na fila.");
-      if (!claimDeadline) throw new Error("Informe o prazo que você consegue cumprir.");
-
-      const { data, error } = await supabase
-        .from("projetos")
-        .update({
-          projetista_id: user.id,
-          prazo_termino: claimDeadline,
-          status: "EM_EXECUCAO",
-          estagio_andamento: "Briefing e levantamento",
-        })
-        .eq("id", nextAvailableProject.id)
-        .is("projetista_id", null)
-        .eq("status", "PRONTO")
-        .select("id")
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        throw new Error("A fila mudou e este projeto já foi assumido. O próximo será atualizado.");
-      }
-
-      const { error: clientError } = await supabase
-        .from("clientes")
-        .update({ projetista_id: user.id })
-        .eq("id", nextAvailableProject.cliente_id);
-      if (clientError) throw clientError;
-
-      await addHistory(
-        nextAvailableProject.id,
-        `${user.nome} assumiu o próximo projeto da fila com prazo em ${formatDate(claimDeadline)}.`,
-      );
-    },
-    onSuccess: () => {
-      setClaimDeadline("");
-      invalidateOperation();
-      toast.success("Próximo projeto da fila assumido com sucesso.");
-    },
-    onError: (error: Error) => {
-      invalidateOperation();
-      toast.error(error.message);
-    },
   });
 
   const changeProjectState = useMutation({
@@ -373,8 +279,6 @@ function DistributionPage() {
 
   const counts = {
     waiting: ownProjects.filter((project) => !project.projetista_id).length,
-    requests: ownProjects.filter((project) => project.projetista_id && project.status === "PRONTO")
-      .length,
     active: ownProjects.filter((project) => effectiveStatus(project) === "EM_EXECUCAO").length,
     paused: ownProjects.filter((project) => project.status === "PAUSADO").length,
     overdue: ownProjects.filter((project) => effectiveStatus(project) === "ATRASADO").length,
@@ -387,12 +291,6 @@ function DistributionPage() {
           value: counts.waiting,
           icon: ContactRound,
           tone: "text-amber-700 bg-amber-50",
-        },
-        {
-          label: "Aguardando aceite",
-          value: counts.requests,
-          icon: UserRoundCheck,
-          tone: "text-violet-700 bg-violet-50",
         },
         {
           label: "Em desenvolvimento",
@@ -414,12 +312,6 @@ function DistributionPage() {
         },
       ]
     : [
-        {
-          label: "Aguardando meu aceite",
-          value: counts.requests,
-          icon: UserRoundCheck,
-          tone: "text-violet-700 bg-violet-50",
-        },
         {
           label: "Em desenvolvimento",
           value: counts.active,
@@ -446,12 +338,12 @@ function DistributionPage() {
         <div>
           <p className="workspace-eyebrow">Fluxo de produção</p>
           <h2 className="workspace-title mt-2">
-            {isAdmin ? "Central de distribuição" : "Minha fila de projetos"}
+            {isAdmin ? "Central de distribuição" : "Projetos liberados para mim"}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             {isAdmin
               ? "Distribua cada entrada, acompanhe a capacidade das projetistas e reorganize a fila sem perder o prazo."
-              : "Você pode assumir somente o próximo projeto livre da fila ou aceitar uma solicitação definida pelo superusuário."}
+              : "Aqui aparecem somente os projetos que o superusuário liberou para você executar."}
           </p>
         </div>
         {isAdmin && (
@@ -463,7 +355,7 @@ function DistributionPage() {
       </section>
 
       <section
-        className={`grid gap-3 sm:grid-cols-2 ${isAdmin ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+        className={`grid gap-3 sm:grid-cols-2 ${isAdmin ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
       >
         {metricItems.map((item) => (
           <Card key={item.label} className="workspace-card border-0 shadow-none">
@@ -504,62 +396,6 @@ function DistributionPage() {
         </section>
       )}
 
-      {!isAdmin && (
-        <section className="workspace-card overflow-hidden border border-[#cbb27a]/35 bg-gradient-to-r from-[#fffdf7] to-white">
-          <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.55fr)] lg:items-center">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#8a6f35]">
-                <RouteIcon className="h-4 w-4" /> Próximo da fila
-              </div>
-              {nextAvailableProject ? (
-                <>
-                  <h3 className="mt-3 text-lg font-semibold text-slate-950">
-                    {nextAvailableProject.nome || "Projeto sem nome"}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {nextAvailableProject.cliente?.nome ?? "Cliente não encontrado"}
-                    {nextAvailableProject.fonte
-                      ? ` · ${SOURCE_LABELS[nextAvailableProject.fonte] ?? nextAvailableProject.fonte}`
-                      : ""}
-                  </p>
-                  <p className="mt-3 max-w-xl text-xs leading-5 text-slate-500">
-                    Este é o projeto livre mais antigo. A ordem é automática e os demais projetos da
-                    fila não ficam disponíveis para escolha.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3 className="mt-3 font-semibold text-slate-900">Nenhum projeto livre agora</h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Quando houver uma nova entrada livre, somente a primeira aparecerá aqui.
-                  </p>
-                </>
-              )}
-            </div>
-            {nextAvailableProject && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <Label htmlFor="claim-deadline">Prazo que consigo entregar</Label>
-                <Input
-                  id="claim-deadline"
-                  type="date"
-                  value={claimDeadline}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={(event) => setClaimDeadline(event.target.value)}
-                  className="mt-2"
-                />
-                <Button
-                  className="mt-3 w-full bg-[#c92031] text-white hover:bg-[#aa1726]"
-                  disabled={!claimDeadline || claimNextProject.isPending}
-                  onClick={() => claimNextProject.mutate()}
-                >
-                  {claimNextProject.isPending ? "Assumindo..." : "Pegar próximo projeto"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
       <section className="workspace-card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center">
           <div className="relative min-w-0 flex-1">
@@ -582,7 +418,7 @@ function DistributionPage() {
               <SelectItem value="TODOS">Todos os projetos</SelectItem>
               {isAdmin && <SelectItem value="SEM_RESPONSAVEL">Sem responsável</SelectItem>}
               <SelectItem value="PRONTO">
-                {isAdmin ? "Livres ou aguardando aceite" : "Aguardando meu aceite"}
+                {isAdmin ? "Aguardando distribuição" : "Liberados pela gestão"}
               </SelectItem>
               <SelectItem value="EM_EXECUCAO">Em desenvolvimento</SelectItem>
               <SelectItem value="PAUSADO">Pausados</SelectItem>
@@ -607,8 +443,6 @@ function DistributionPage() {
         ) : (
           <div className="divide-y divide-slate-100">
             {visibleProjects.map((project) => {
-              const awaitingAcceptance =
-                project.status === "PRONTO" && Boolean(project.projetista_id);
               const status = project.status === "PRONTO" ? "PRONTO" : effectiveStatus(project);
               const deadlineInfo = deadlineState(project.prazo_termino);
               return (
@@ -624,16 +458,10 @@ function DistributionPage() {
                       <Badge
                         variant="outline"
                         className={`rounded-full text-[10px] ${
-                          awaitingAcceptance
-                            ? "border-violet-200 bg-violet-50 text-violet-700"
-                            : PROJECT_STATUS_STYLES[status]
+                          PROJECT_STATUS_STYLES[status]
                         }`}
                       >
-                        {awaitingAcceptance
-                          ? isAdmin
-                            ? "Aguardando aceite"
-                            : "Solicitação do superusuário"
-                          : PROJECT_STATUS_LABELS[status]}
+                        {PROJECT_STATUS_LABELS[status]}
                       </Badge>
                     </div>
                     <p className="mt-1 truncate text-sm text-slate-600">
@@ -706,19 +534,6 @@ function DistributionPage() {
                           <Pause className="mr-1.5 h-3.5 w-3.5" /> Pausar
                         </Button>
                       ) : null}
-                    </div>
-                  )}
-                  {!isAdmin && awaitingAcceptance && (
-                    <div className="flex items-center lg:justify-end">
-                      <Button
-                        size="sm"
-                        className="h-8 bg-[#c92031] text-white hover:bg-[#aa1726]"
-                        disabled={acceptAssignedProject.isPending}
-                        onClick={() => acceptAssignedProject.mutate(project)}
-                      >
-                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                        {acceptAssignedProject.isPending ? "Aceitando..." : "Aceitar solicitação"}
-                      </Button>
                     </div>
                   )}
                 </article>
