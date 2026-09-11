@@ -19,7 +19,8 @@ import { toast } from 'sonner';
 import { BudgetItem, BudgetSettings, ProductItem } from '@/lib/orcamento/types';
 import { parsePromobXML, parseTXT, parseCSV, parseJSON } from '@/lib/orcamento/parsers';
 import { 
-  calculateItemPrice, recalculateBudget, CHAPA_AREA_M2, round2, isChapa 
+  calculateItemPrice, recalculateBudget, CHAPA_AREA_M2, round2, isChapa,
+  smartMatchPromobChapa, matchProduct
 } from '@/lib/orcamento/calculator';
 import { generateBudgetPdf } from '@/lib/orcamento/pdf-generator';
 import { INITIAL_CHAPAS_CATALOG, BrandCatalog, CatalogByBrand } from '@/lib/orcamento/chapas-catalog';
@@ -107,6 +108,18 @@ export function OrcamentoCurrentTab({
     const b = INITIAL_CHAPAS_CATALOG[selectedBrand];
     return b && b.type === 'brand' ? (b as BrandCatalog).lines : [];
   }, [selectedBrand]);
+
+  // Current selected board price and m2 cost in modal
+  const currentBoardPrice = useMemo(() => {
+    const brandData = INITIAL_CHAPAS_CATALOG[selectedBrand] as BrandCatalog;
+    const lineObj = brandData?.lines.find(l => l.name === selectedLine);
+    if (!lineObj) return 0;
+    return lineObj.prices[selectedThickness] || lineObj.prices['15mm'] || 0;
+  }, [selectedBrand, selectedLine, selectedThickness]);
+
+  const currentM2Cost = useMemo(() => {
+    return round2(currentBoardPrice / CHAPA_AREA_M2);
+  }, [currentBoardPrice]);
 
   // Handle File Upload (Promob XML, TXT, CSV, JSON)
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,19 +364,154 @@ export function OrcamentoCurrentTab({
   // Open Link Modal for Item
   const handleOpenLinkModal = (item: BudgetItem) => {
     setLinkingItem(item);
-    // Try to pre-select brand from code
-    const raw = `${item.code} ${item.description}`.toLowerCase();
-    const foundBrand = brandsList.find(b => raw.includes(b.toLowerCase()));
-    if (foundBrand) setSelectedBrand(foundBrand);
 
-    // Pre-select thickness
-    if (/\b6mm\b|\.6\./i.test(raw)) setSelectedThickness('6mm');
-    else if (/\b18mm\b|\.18\./i.test(raw)) setSelectedThickness('18mm');
-    else if (/\b25mm\b|\.25\./i.test(raw)) setSelectedThickness('25mm');
-    else setSelectedThickness('15mm');
+    // Usa smart match para identificar a marca e linha mais adequadas
+    const smart = smartMatchPromobChapa(item.code, item.description, INITIAL_CHAPAS_CATALOG);
+    if (smart.brand && brandsList.includes(smart.brand)) {
+      setSelectedBrand(smart.brand);
+      setSelectedThickness(smart.thickness);
+      if (smart.line) {
+        setSelectedLine(smart.line);
+      } else {
+        const brandData = INITIAL_CHAPAS_CATALOG[smart.brand] as BrandCatalog;
+        setSelectedLine(brandData?.lines[0]?.name || '');
+      }
+    } else {
+      const raw = `${item.code} ${item.description}`.toLowerCase();
+      const foundBrand = brandsList.find(b => raw.includes(b.toLowerCase()));
+      if (foundBrand) setSelectedBrand(foundBrand);
 
-    setSelectedLine(brandLines[0]?.name || '');
+      if (/\b6mm\b|\.6\./i.test(raw)) setSelectedThickness('6mm');
+      else if (/\b18mm\b|\.18\./i.test(raw)) setSelectedThickness('18mm');
+      else if (/\b25mm\b|\.25\./i.test(raw)) setSelectedThickness('25mm');
+      else setSelectedThickness('15mm');
+
+      const b = INITIAL_CHAPAS_CATALOG[foundBrand || 'Arauco'] as BrandCatalog;
+      setSelectedLine(b?.lines[0]?.name || '');
+    }
+
     setLinkModalOpen(true);
+  };
+
+  // Puxar valor da tabela de preço diretamente ao clicar no botão "Consultar / Vincular Chapa da Tabela"
+  const handleConsultarVincularPreco = (item: BudgetItem) => {
+    // 1. Tenta correspondência inteligente no catálogo de chapas (Arauco, Duratex, Guararapes, etc.)
+    const smart = smartMatchPromobChapa(item.code, item.description, INITIAL_CHAPAS_CATALOG);
+    if (smart.matched && smart.m2Cost > 0) {
+      const updated = items.map(it => {
+        if (it.id === item.id) {
+          return calculateItemPrice(
+            {
+              code: `${smart.brand?.toUpperCase()}-${smart.line?.toUpperCase().replace(/\s+/g, '_')}-${smart.thickness}`,
+              description: it.description,
+              quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+              unit: it.unit,
+              unit_cost: smart.m2Cost,
+              margin: it.margin,
+            },
+            database,
+            settings
+          );
+        }
+        return it;
+      });
+
+      const res = recalculateBudget(updated, database, settings);
+      setItems(res.items);
+
+      toast.success(`Preço ${smart.m2Cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² vinculado da tabela!`, {
+        description: `${smart.brand} - ${smart.line} (${smart.thickness}) | Chapa inteira: R$ ${smart.boardPrice.toFixed(2)}`,
+      });
+      return;
+    }
+
+    // 2. Tenta encontrar no banco de materiais/produtos cadastrados (database)
+    const prodMatch = matchProduct(item.code, item.description, database);
+    if (prodMatch.product && prodMatch.product.unit_cost > 0) {
+      const cost = prodMatch.product.unit_cost;
+      const updated = items.map(it => {
+        if (it.id === item.id) {
+          return calculateItemPrice(
+            {
+              code: it.code,
+              description: it.description,
+              quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+              unit: it.unit,
+              unit_cost: cost,
+              margin: it.margin,
+            },
+            database,
+            settings
+          );
+        }
+        return it;
+      });
+
+      const res = recalculateBudget(updated, database, settings);
+      setItems(res.items);
+
+      toast.success(`Preço ${cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} vinculado da tabela de materiais!`, {
+        description: prodMatch.product.description,
+      });
+      return;
+    }
+
+    // 3. Se não houver correspondência 100% automática, abre o modal de consulta para o usuário escolher a linha/marca
+    handleOpenLinkModal(item);
+    toast.info('Consulte e selecione a linha da chapa para trazer o preço.');
+  };
+
+  // Vincular automaticamente todas as peças que possuem correspondência direta na tabela
+  const handlePullAllPricesFromTable = () => {
+    let matchedCount = 0;
+    const updated = items.map(it => {
+      // Se já tiver custo definido e for maior que 0, preserva
+      if (it.unit_cost > 0) return it;
+
+      const smart = smartMatchPromobChapa(it.code, it.description, INITIAL_CHAPAS_CATALOG);
+      if (smart.matched && smart.m2Cost > 0) {
+        matchedCount++;
+        return calculateItemPrice(
+          {
+            code: `${smart.brand?.toUpperCase()}-${smart.line?.toUpperCase().replace(/\s+/g, '_')}-${smart.thickness}`,
+            description: it.description,
+            quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+            unit: it.unit,
+            unit_cost: smart.m2Cost,
+            margin: it.margin,
+          },
+          database,
+          settings
+        );
+      }
+
+      const prodMatch = matchProduct(it.code, it.description, database);
+      if (prodMatch.product && prodMatch.product.unit_cost > 0) {
+        matchedCount++;
+        return calculateItemPrice(
+          {
+            code: it.code,
+            description: it.description,
+            quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+            unit: it.unit,
+            unit_cost: prodMatch.product.unit_cost,
+            margin: it.margin,
+          },
+          database,
+          settings
+        );
+      }
+
+      return it;
+    });
+
+    if (matchedCount > 0) {
+      const res = recalculateBudget(updated, database, settings);
+      setItems(res.items);
+      toast.success(`${matchedCount} materiais vinculados com valores da tabela de preços!`);
+    } else {
+      toast.info('Nenhuma chapa pendente com correspondência direta foi encontrada.');
+    }
   };
 
   // Apply Linker to single item or all similar items
@@ -411,7 +559,7 @@ export function OrcamentoCurrentTab({
         description: `Preço de custo definido como ${m2Cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m².`,
       });
     } else {
-      toast.success(`Item vinculado a ${selectedBrand} - ${lineObj.name}!`);
+      toast.success(`Preço ${m2Cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m² vinculado de ${selectedBrand} - ${lineObj.name}!`);
     }
   };
 
@@ -716,6 +864,18 @@ export function OrcamentoCurrentTab({
 
           {items.length > 0 && (
             <Button
+              variant="outline"
+              onClick={handlePullAllPricesFromTable}
+              className="border-blue-200 bg-blue-50/60 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+              title="Percorre os itens e traz o valor da tabela de preço para todas as chapas reconhecidas"
+            >
+              <Sparkles className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
+              Trazer Preços da Tabela
+            </Button>
+          )}
+
+          {items.length > 0 && (
+            <Button
               variant="ghost"
               size="sm"
               onClick={handleClearBudget}
@@ -848,14 +1008,28 @@ export function OrcamentoCurrentTab({
 
                       <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
                         <div className="flex items-center gap-1.5">
-                          <span className="truncate max-w-[240px]" title={item.code}>
+                          <span className="truncate max-w-[220px]" title={item.code}>
                             {item.code}
                           </span>
 
-                          {item.found && item.unit_cost > 0 && (
-                            <span title="Item precificado">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            </span>
+                          {item.unit_cost === 0 ? (
+                            <button
+                              onClick={() => handleConsultarVincularPreco(item)}
+                              className="flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors shrink-0"
+                              title="Consultar/Vincular Chapa da tabela para trazer o valor do custo unitário"
+                            >
+                              <Link2 className="h-3 w-3 text-blue-600" />
+                              Trazer Preço
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenLinkModal(item)}
+                              className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700 hover:underline shrink-0"
+                              title="Chapa vinculada à tabela de preços. Clique para consultar ou trocar de linha."
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>Vinculado</span>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -907,7 +1081,7 @@ export function OrcamentoCurrentTab({
                                 ? 'border-amber-300 bg-amber-50/50 text-amber-900 placeholder:text-amber-400'
                                 : 'border-slate-200 text-slate-900 focus:border-[#c92031]'
                             }`}
-                            title="Digite o custo unitário do material"
+                            title="Digite o custo unitário do material ou clique no link para trazer da tabela"
                           />
                         </div>
                       </td>
@@ -940,11 +1114,11 @@ export function OrcamentoCurrentTab({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleOpenLinkModal(item)}
-                            className="h-7 w-7 text-slate-400 hover:text-blue-600"
-                            title="Consultar / Vincular Chapa da Tabela"
+                            onClick={() => handleConsultarVincularPreco(item)}
+                            className="h-7 w-7 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                            title="Consultar/Vincular Chapa da tabela (trazer o valor do preço de custo)"
                           >
-                            <Link2 className="h-3.5 w-3.5" />
+                            <Link2 className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1036,6 +1210,23 @@ export function OrcamentoCurrentTab({
                   </SelectContent>
                 </Select>
               </div>
+              {/* Preço Calculado da Chapa e do M² */}
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-emerald-900 block">Preço de Custo na Tabela:</span>
+                  <span className="text-slate-600">
+                    {selectedBrand} - {selectedLine || 'Selecione a linha'} ({selectedThickness})
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-black text-emerald-800 block">
+                    {currentM2Cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    (Chapa inteira: {currentBoardPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1043,15 +1234,15 @@ export function OrcamentoCurrentTab({
             <Button
               variant="outline"
               onClick={() => handleApplyLink(false)}
-              className="text-xs flex-1"
+              className="text-xs flex-1 border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold"
             >
-              Vincular Apenas Este Item
+              📥 Trazer Preço para Este Item
             </Button>
             <Button
               onClick={() => handleApplyLink(true)}
-              className="bg-[#c92031] text-white hover:bg-[#aa1726] text-xs flex-1"
+              className="bg-[#c92031] text-white hover:bg-[#aa1726] text-xs flex-1 font-semibold"
             >
-              Vincular a TODOS Similares
+              📥 Trazer para TODOS Similares
             </Button>
           </DialogFooter>
         </DialogContent>
