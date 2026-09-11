@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X, AlertCircle, Check, CheckCircle2 } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, Clock, User, Plus, Search, Edit2, Trash2, X, 
+  AlertCircle, Check, CheckCircle2, Lock, ShieldAlert 
+} from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +16,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +29,7 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from '@/components/ui/tooltip';
-import { format, startOfDay, isSameDay, parseISO, areIntervalsOverlapping } from 'date-fns';
+import { format, startOfDay, isSameDay, parseISO, areIntervalsOverlapping, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ptBR } from 'date-fns/locale';
 
@@ -36,19 +40,22 @@ export const Route = createFileRoute('/_dashboard/agenda')({
 const TIPO_LABELS: Record<string, string> = {
   'REUNIAO': 'Reunião com Cliente',
   'ATENDIMENTO': 'Atendimento',
-  'VISITA': 'Tirar Medida'
+  'VISITA': 'Tirar Medida',
+  'BLOQUEIO': '🔒 Agenda Travada (Admin)'
 };
 
 const TIPO_COLORS: Record<string, string> = {
   'REUNIAO': 'bg-red-500 text-white',
   'ATENDIMENTO': 'bg-blue-500 text-white',
-  'VISITA': 'bg-green-500 text-white'
+  'VISITA': 'bg-green-500 text-white',
+  'BLOQUEIO': 'bg-slate-900 text-amber-300'
 };
 
 const TIPO_BADGE_COLORS: Record<string, string> = {
   'REUNIAO': 'bg-red-100 text-red-700',
   'ATENDIMENTO': 'bg-blue-100 text-blue-700',
-  'VISITA': 'bg-green-100 text-green-700'
+  'VISITA': 'bg-green-100 text-green-700',
+  'BLOQUEIO': 'bg-slate-900 text-amber-300 border border-slate-700'
 };
 
 interface AgendaForm {
@@ -94,6 +101,18 @@ function AgendaPage() {
     hora_fim: '',
     tipo: 'REUNIAO',
     cliente_id: ''
+  });
+
+  // Modal exclusivo para Administrador: Travar Agenda
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const [lockFormData, setLockFormData] = useState({
+    titulo: '🔒 Agenda Travada pelo Administrador',
+    motivo: 'Indisponível para compromissos',
+    data_inicio: format(new Date(), 'yyyy-MM-dd'),
+    data_fim: format(new Date(), 'yyyy-MM-dd'),
+    dia_inteiro: true,
+    hora_inicio: '08:00',
+    hora_fim: '18:00',
   });
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -174,7 +193,7 @@ function AgendaPage() {
   }, [events]);
 
   const modifiers = useMemo(() => {
-    const mods: Record<string, Date[]> = { REUNIAO: [], ATENDIMENTO: [], VISITA: [] };
+    const mods: Record<string, Date[]> = { REUNIAO: [], ATENDIMENTO: [], VISITA: [], BLOQUEIO: [] };
     events?.forEach(e => {
       if (mods[e.tipo]) {
         mods[e.tipo].push(parseISO(e.data_inicio));
@@ -191,6 +210,10 @@ function AgendaPage() {
       if (!event.hora_fim) throw new Error('Informe o horário de término.');
       if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
 
+      if (event.tipo === 'BLOQUEIO' && !isAdmin) {
+        throw new Error('Apenas administradores têm permissão para travar a agenda.');
+      }
+
       const data_inicio = new Date(`${event.data}T${event.hora_inicio}`);
       if (isNaN(data_inicio.getTime())) {
         throw new Error('Data ou hora inválida.');
@@ -198,6 +221,30 @@ function AgendaPage() {
       const data_fim = new Date(`${event.data}T${event.hora_fim}`);
       if (isNaN(data_fim.getTime()) || data_fim <= data_inicio) {
         throw new Error('O horário final precisa ser posterior ao horário inicial.');
+      }
+
+      // Validação: Impedir qualquer compromisso em período com Agenda Travada pelo Administrador
+      if (event.tipo !== 'BLOQUEIO') {
+        const conflictingLock = events?.find(e => {
+          if (editingEventId && e.id === editingEventId) return false;
+          if (e.tipo !== 'BLOQUEIO') return false;
+
+          const lockStart = parseISO(e.data_inicio);
+          const lockEnd = parseISO(e.data_fim);
+
+          return areIntervalsOverlapping(
+            { start: data_inicio, end: data_fim },
+            { start: lockStart, end: lockEnd }
+          );
+        });
+
+        if (conflictingLock) {
+          const lockStartStr = format(parseISO(conflictingLock.data_inicio), 'HH:mm');
+          const lockEndStr = format(parseISO(conflictingLock.data_fim), 'HH:mm');
+          throw new Error(
+            `A agenda está travada pelo Administrador das ${lockStartStr} às ${lockEndStr} ("${conflictingLock.titulo}"). Escolha outro horário ou dia.`
+          );
+        }
       }
 
       const scheduleOwnerId = editingEventId
@@ -278,6 +325,60 @@ function AgendaPage() {
     }
   });
 
+  const lockMutation = useMutation({
+    mutationFn: async (data: typeof lockFormData) => {
+      if (!isAdmin) throw new Error('Apenas administradores podem travar a agenda.');
+      if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
+      if (!data.data_inicio) throw new Error('Informe a data inicial.');
+      if (!data.data_fim) throw new Error('Informe a data final.');
+
+      const startDay = new Date(`${data.data_inicio}T00:00:00`);
+      const endDay = new Date(`${data.data_fim}T00:00:00`);
+      if (endDay < startDay) {
+        throw new Error('A data final deve ser igual ou posterior à data inicial.');
+      }
+
+      // Criar bloqueios para cada dia do intervalo selecionado
+      const inserts = [];
+      let cur = new Date(startDay);
+      while (cur <= endDay) {
+        const curDateStr = format(cur, 'yyyy-MM-dd');
+        const hInicio = data.dia_inteiro ? '00:00' : data.hora_inicio;
+        const hFim = data.dia_inteiro ? '23:59' : data.hora_fim;
+
+        const dInicio = new Date(`${curDateStr}T${hInicio}`);
+        const dFim = new Date(`${curDateStr}T${hFim}`);
+
+        inserts.push({
+          titulo: data.titulo.trim() || '🔒 Agenda Travada pelo Administrador',
+          descricao: data.motivo.trim() || 'Agenda bloqueada pelo Administrador',
+          data_inicio: dInicio.toISOString(),
+          data_fim: dFim.toISOString(),
+          tipo: 'BLOQUEIO',
+          status: 'CONFIRMADO',
+          cliente_id: null,
+          criado_por: user.id,
+        });
+
+        cur = addDays(cur, 1);
+      }
+
+      const { error } = await supabase.from('agendamentos').insert(inserts);
+      if (error) {
+        console.error('[agenda] lock error', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+      setIsLockDialogOpen(false);
+      toast.success('Agenda travada com sucesso!');
+    },
+    onError: (error: unknown) => {
+      toast.error('Erro ao travar agenda: ' + errorMessage(error));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (event: AgendaEvent) => {
       if (!user?.id) throw new Error('Sessão inválida. Faça login novamente.');
@@ -348,7 +449,8 @@ function AgendaPage() {
       toast.error('Você só pode excluir os agendamentos que criou.');
       return;
     }
-    if (confirm('Deseja realmente cancelar este agendamento?')) {
+    const isLock = event.tipo === 'BLOQUEIO';
+    if (confirm(isLock ? 'Deseja destravar a agenda neste período?' : 'Deseja realmente cancelar este agendamento?')) {
       deleteMutation.mutate(event);
     }
   };
@@ -361,97 +463,221 @@ function AgendaPage() {
           <h1 className="workspace-title mt-2">Agenda compartilhada</h1>
           <p className="mt-2 text-sm text-slate-500">
             Todos enxergam os compromissos. Cada projetista administra somente a própria agenda; o
-            superusuário pode administrar todas.
+            administrador pode travar períodos da agenda e gerenciar todos.
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingEventId(null);
-            setFormData({ titulo: '', descricao: '', data: '', hora_inicio: '', hora_fim: '', tipo: 'REUNIAO', cliente_id: '' });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 shadow-sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Agendamento
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[520px]">
-            <DialogHeader>
-              <DialogTitle>{editingEventId ? 'Editar Compromisso' : 'Agendar Compromisso'}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-3 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="titulo">Título</Label>
-                <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({...formData, titulo: e.target.value})} placeholder="Ex: Reunião de Briefing" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+        <div className="flex items-center gap-2">
+          {/* Botão Travar Agenda - Exclusivo para Administrador */}
+          {isAdmin && (
+            <Dialog open={isLockDialogOpen} onOpenChange={setIsLockDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-slate-900 text-amber-300 hover:bg-slate-800 border border-slate-700 shadow-sm font-semibold text-xs">
+                  <Lock className="mr-1.5 h-4 w-4 text-amber-400" />
+                  Travar Agenda
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[480px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-slate-900">
+                    <Lock className="h-5 w-5 text-amber-500" />
+                    Travar Agenda (Exclusivo Administrador)
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500">
+                    Bloqueie um dia específico ou intervalo de datas para impedir que qualquer usuário conte com você ou marque reuniões nesse período.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-3 py-2 text-xs">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lock-titulo">Título / Aviso</Label>
+                    <Input
+                      id="lock-titulo"
+                      value={lockFormData.titulo}
+                      onChange={e => setLockFormData({ ...lockFormData, titulo: e.target.value })}
+                      placeholder="Ex: 🔒 Agenda Travada pelo Administrador"
+                    />
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lock-motivo">Motivo / Observação</Label>
+                    <Input
+                      id="lock-motivo"
+                      value={lockFormData.motivo}
+                      onChange={e => setLockFormData({ ...lockFormData, motivo: e.target.value })}
+                      placeholder="Ex: Indisponível, Férias, Reunião de Diretoria"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="lock-inicio">Data Inicial</Label>
+                      <Input
+                        id="lock-inicio"
+                        type="date"
+                        value={lockFormData.data_inicio}
+                        onChange={e => setLockFormData({ ...lockFormData, data_inicio: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="lock-fim">Data Final</Label>
+                      <Input
+                        id="lock-fim"
+                        type="date"
+                        value={lockFormData.data_fim}
+                        onChange={e => setLockFormData({ ...lockFormData, data_fim: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                    <input
+                      type="checkbox"
+                      id="dia-inteiro"
+                      checked={lockFormData.dia_inteiro}
+                      onChange={e => setLockFormData({ ...lockFormData, dia_inteiro: e.target.checked })}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                    />
+                    <label htmlFor="dia-inteiro" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                      Travar o Dia Todo (00:00 às 23:59)
+                    </label>
+                  </div>
+
+                  {!lockFormData.dia_inteiro && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="lock-hora-inicio">Hora Inicial</Label>
+                        <Input
+                          id="lock-hora-inicio"
+                          type="time"
+                          value={lockFormData.hora_inicio}
+                          onChange={e => setLockFormData({ ...lockFormData, hora_inicio: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="lock-hora-fim">Hora Término</Label>
+                        <Input
+                          id="lock-hora-fim"
+                          type="time"
+                          value={lockFormData.hora_fim}
+                          onChange={e => setLockFormData({ ...lockFormData, hora_fim: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[11px] text-amber-800">
+                    <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      Nenhum outro usuário poderá agendar compromissos neste período. O calendário exibirá os dias marcados em preto com cadeado.
+                    </span>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    onClick={() => lockMutation.mutate(lockFormData)}
+                    disabled={lockMutation.isPending}
+                    className="w-full bg-slate-900 text-amber-300 hover:bg-slate-800 font-bold"
+                  >
+                    {lockMutation.isPending ? 'Travando Agenda...' : 'Confirmar e Travar Agenda'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingEventId(null);
+              setFormData({ titulo: '', descricao: '', data: '', hora_inicio: '', hora_fim: '', tipo: 'REUNIAO', cliente_id: '' });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90 shadow-sm text-xs">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Agendamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[520px]">
+              <DialogHeader>
+                <DialogTitle>{editingEventId ? 'Editar Compromisso' : 'Agendar Compromisso'}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-3 py-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="data">Data</Label>
-                  <Input id="data" type="date" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} />
+                  <Label htmlFor="titulo">Título</Label>
+                  <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({...formData, titulo: e.target.value})} placeholder="Ex: Reunião de Briefing" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="data">Data</Label>
+                    <Input id="data" type="date" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="tipo">Tipo de Compromisso</Label>
+                    <Select value={formData.tipo} onValueChange={(v) => setFormData({...formData, tipo: v})}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="VISITA">📏 Tirar Medida (Verde)</SelectItem>
+                        <SelectItem value="ATENDIMENTO">📞 Atendimento (Azul)</SelectItem>
+                        <SelectItem value="REUNIAO">🤝 Reunião Cliente (Vermelho)</SelectItem>
+                        {isAdmin && (
+                          <SelectItem value="BLOQUEIO">🔒 Agenda Travada (Admin)</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="inicio">Hora início</Label>
+                    <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="fim">Hora término</Label>
+                    <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    'flex items-start gap-2 rounded-xl border p-3 text-xs leading-5',
+                    formData.tipo === 'REUNIAO'
+                      ? 'border-red-200 bg-red-50 text-red-800'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                  )}
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    {formData.tipo === 'REUNIAO'
+                      ? 'A reunião pode coincidir com a agenda de outro projetista, mas não com outra reunião sua.'
+                      : 'Este compromisso pode coincidir com outros horários, pois cada projetista possui sua própria agenda.'}
+                  </span>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="tipo">Tipo de Compromisso</Label>
-                  <Select value={formData.tipo} onValueChange={(v) => setFormData({...formData, tipo: v})}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
+                  <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
+                  <Select value={formData.cliente_id} onValueChange={(v) => setFormData({...formData, cliente_id: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="VISITA">📏 Tirar Medida (Verde)</SelectItem>
-                      <SelectItem value="ATENDIMENTO">📞 Atendimento (Azul)</SelectItem>
-                      <SelectItem value="REUNIAO">🤝 Reunião Cliente (Vermelho)</SelectItem>
+                      {clientes?.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="inicio">Hora início</Label>
-                  <Input id="inicio" type="time" value={formData.hora_inicio} onChange={(e) => setFormData({...formData, hora_inicio: e.target.value})} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="fim">Hora término</Label>
-                  <Input id="fim" type="time" value={formData.hora_fim} onChange={(e) => setFormData({...formData, hora_fim: e.target.value})} />
-                </div>
-              </div>
-              <div
-                className={cn(
-                  'flex items-start gap-2 rounded-xl border p-3 text-xs leading-5',
-                  formData.tipo === 'REUNIAO'
-                    ? 'border-red-200 bg-red-50 text-red-800'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-800',
-                )}
-              >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  {formData.tipo === 'REUNIAO'
-                    ? 'A reunião pode coincidir com a agenda de outro projetista, mas não com outra reunião sua.'
-                    : 'Este compromisso pode coincidir com outros horários, pois cada projetista possui sua própria agenda.'}
-                </span>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="cliente">Cliente Vinculado (Opcional)</Label>
-                <Select value={formData.cliente_id} onValueChange={(v) => setFormData({...formData, cliente_id: v})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes?.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending} className="w-full sm:w-auto">
-                {editingEventId ? 'Salvar Alterações' : 'Confirmar Agendamento'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending} className="w-full sm:w-auto">
+                  {editingEventId ? 'Salvar Alterações' : 'Confirmar Agendamento'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -471,7 +697,8 @@ function AgendaPage() {
               modifiersClassNames={{
                 VISITA: "bg-green-100 text-green-700 font-bold border-b-2 border-green-500",
                 ATENDIMENTO: "bg-blue-100 text-blue-700 font-bold border-b-2 border-blue-500",
-                REUNIAO: "bg-red-100 text-red-700 font-bold border-b-2 border-red-500"
+                REUNIAO: "bg-red-100 text-red-700 font-bold border-b-2 border-red-500",
+                BLOQUEIO: "bg-slate-900 text-amber-300 font-bold border-b-2 border-amber-400 shadow-sm"
               }}
             />
             <div className="mt-4 p-3 border-t grid grid-cols-1 gap-2">
@@ -487,6 +714,10 @@ function AgendaPage() {
               <div className="flex items-center gap-2 text-xs font-medium">
                 <div className="w-3 h-3 rounded bg-red-500" />
                 <span>🤝 Reunião com Cliente (Vermelho)</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <div className="w-3 h-3 rounded bg-slate-900 border border-amber-400" />
+                <span>🔒 Agenda Travada (Admin)</span>
               </div>
             </div>
           </CardContent>
@@ -515,21 +746,47 @@ function AgendaPage() {
             <div className="grid gap-3">
               {filteredEvents.map((event) => {
                 const isConfirmed = event.status === 'CONFIRMADO';
-                const canManage = isAdmin || event.criado_por_id === user?.id;
+                const isBloqueio = event.tipo === 'BLOQUEIO';
+                const canManage = isAdmin || (!isBloqueio && event.criado_por_id === user?.id);
+
                 return (
-                <Card key={event.id} className={cn("hover:shadow-md transition-all border-l-4 overflow-hidden group", isConfirmed && "ring-2 ring-emerald-400/60 bg-emerald-50/30")} style={{ borderLeftColor: event.tipo === 'REUNIAO' ? '#ef4444' : event.tipo === 'ATENDIMENTO' ? '#3b82f6' : '#22c55e' }}>
+                <Card
+                  key={event.id}
+                  className={cn(
+                    "hover:shadow-md transition-all border-l-4 overflow-hidden group",
+                    isBloqueio
+                      ? "border-l-slate-900 bg-slate-900/5 border-slate-200"
+                      : isConfirmed && "ring-2 ring-emerald-400/60 bg-emerald-50/30"
+                  )}
+                  style={{
+                    borderLeftColor: isBloqueio
+                      ? '#0f172a'
+                      : event.tipo === 'REUNIAO'
+                      ? '#ef4444'
+                      : event.tipo === 'ATENDIMENTO'
+                      ? '#3b82f6'
+                      : '#22c55e'
+                  }}
+                >
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-start gap-4">
-                      <div className={`p-2 rounded-lg ${isConfirmed ? 'bg-emerald-100' : 'bg-muted/50'}`}>
-                        {isConfirmed ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Clock className="h-5 w-5 text-muted-foreground" />}
+                      <div className={`p-2 rounded-lg ${isBloqueio ? 'bg-slate-900 text-amber-300' : isConfirmed ? 'bg-emerald-100' : 'bg-muted/50'}`}>
+                        {isBloqueio ? <Lock className="h-5 w-5 text-amber-400" /> : isConfirmed ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Clock className="h-5 w-5 text-muted-foreground" />}
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-foreground">{event.titulo}</h3>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_BADGE_COLORS[event.tipo]}`}>
-                            {TIPO_LABELS[event.tipo]}
+                          <h3 className={cn("font-bold text-foreground", isBloqueio && "text-slate-900 font-black")}>
+                            {event.titulo}
+                          </h3>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_BADGE_COLORS[event.tipo] || 'bg-slate-100'}`}>
+                            {TIPO_LABELS[event.tipo] || event.tipo}
                           </span>
-                          {isConfirmed && (
+                          {isBloqueio && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                              Exclusivo Admin
+                            </span>
+                          )}
+                          {!isBloqueio && isConfirmed && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
                               <Check className="h-3 w-3" /> Confirmado
                             </span>
@@ -541,8 +798,13 @@ function AgendaPage() {
                           </span>
                           <span className="flex items-center gap-1 border-l pl-3">
                             <User className="h-3 w-3" />
-                            {event.criado_por?.nome}
+                            {event.criado_por?.nome || (isBloqueio ? 'Administrador' : 'Usuário')}
                           </span>
+                          {event.descricao && (
+                            <span className="text-slate-500 italic border-l pl-3">
+                              {event.descricao}
+                            </span>
+                          )}
                           {event.cliente && (
                             <span className="font-medium bg-muted px-2 rounded">
                               Cliente: {event.cliente.nome}
@@ -552,7 +814,7 @@ function AgendaPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      {!isConfirmed && canManage && (
+                      {!isConfirmed && !isBloqueio && canManage && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -566,10 +828,18 @@ function AgendaPage() {
                       )}
                       {canManage && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(event)}>
+                          {!isBloqueio && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleEdit(event)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => handleDelete(event)}
+                            title={isBloqueio ? "Destravar Agenda neste dia/horário" : "Cancelar agendamento"}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

@@ -63,6 +63,8 @@ export interface SavedBudget {
   name: string;
   client_name?: string;
   client_phone?: string;
+  client_id?: string;
+  projeto_id?: string;
   project_environment?: string;
   created_at: string;
   updated_at: string;

@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo } from 'react';
 import { 
   Upload, Plus, Trash2, Edit2, AlertTriangle, 
-  CheckCircle2, FileSpreadsheet, Download, Save, Layers, Search, Check, Loader2, Link2, Sparkles
+  CheckCircle2, FileSpreadsheet, Download, Save, Layers, Search, Check, Loader2, Link2, Sparkles,
+  User, FolderKanban, Info
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,18 @@ import {
 import { generateBudgetPdf } from '@/lib/orcamento/pdf-generator';
 import { INITIAL_CHAPAS_CATALOG, BrandCatalog, CatalogByBrand } from '@/lib/orcamento/chapas-catalog';
 
+export interface ClientWithProjects {
+  id: string;
+  nome: string;
+  telefone?: string | null;
+  email?: string | null;
+  projetos?: Array<{
+    id: string;
+    nome: string | null;
+    status?: string | null;
+  }> | null;
+}
+
 interface CurrentTabProps {
   items: BudgetItem[];
   setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>;
@@ -36,7 +49,12 @@ interface CurrentTabProps {
     profit_margin_percent: number;
     items_count: number;
   };
-  onSaveBudget: (clientName: string, projectName: string) => void;
+  clientsList?: ClientWithProjects[];
+  onSaveBudget: (
+    clientName: string,
+    projectName: string,
+    extra?: { clientId?: string; clientPhone?: string; projetoId?: string }
+  ) => void;
 }
 
 export function OrcamentoCurrentTab({
@@ -46,6 +64,7 @@ export function OrcamentoCurrentTab({
   settings,
   setSettings,
   totals,
+  clientsList = [],
   onSaveBudget,
 }: CurrentTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +73,11 @@ export function OrcamentoCurrentTab({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [addItemModalOpen, setAddItemModalOpen] = useState(false);
 
-  // Client & Project Info
+  // Client & Project Info (with link to registered client & project)
+  const [selectedClientId, setSelectedClientId] = useState<string>('custom');
   const [clientName, setClientName] = useState('Cliente DF Móveis');
+  const [clientPhone, setClientPhone] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('custom');
   const [projectName, setProjectName] = useState('Ambiente Planejado');
 
   // Filter / Search inside current table
@@ -125,7 +147,8 @@ export function OrcamentoCurrentTab({
         return;
       }
 
-      // Convert raw items into BudgetItem matching with database and brand catalog
+      // O usuário solicitou deixar os custos zerados/limpos na importação
+      // para inserir manualmente de forma organizada e limpa
       const newBudgetItems: BudgetItem[] = allRawItems.map((raw, idx) => {
         const calculated = calculateItemPrice(
           {
@@ -133,9 +156,10 @@ export function OrcamentoCurrentTab({
             description: raw.description,
             quantity: raw.quantity,
             unit: raw.unit,
+            unit_cost: 0, // Custo inicial limpo / manual conforme instrução do usuário
             margin: settings.margin, // Sempre herda a margem configurada!
           },
-          database,
+          [], // Não vincula preço automático para manter o orçamento limpo
           settings
         );
         return {
@@ -146,9 +170,8 @@ export function OrcamentoCurrentTab({
 
       setItems(newBudgetItems);
 
-      const matchedCount = newBudgetItems.filter(i => i.found).length;
-      toast.success(`${parsedCount} itens importados!`, {
-        description: `${matchedCount} itens identificados e precificados automaticamente.`,
+      toast.success(`${parsedCount} itens importados com sucesso!`, {
+        description: `Custos unitários limpos para preenchimento manual conforme sua tabela.`,
       });
     } catch (err: any) {
       console.error('Erro ao processar arquivo:', err);
@@ -170,11 +193,19 @@ export function OrcamentoCurrentTab({
     setSaveSuccess(false);
 
     try {
-      onSaveBudget(clientName.trim() || 'Cliente DF Móveis', projectName.trim() || 'Orçamento');
+      onSaveBudget(
+        clientName.trim() || 'Cliente DF Móveis',
+        projectName.trim() || 'Orçamento',
+        {
+          clientId: selectedClientId !== 'custom' ? selectedClientId : undefined,
+          clientPhone: clientPhone || undefined,
+          projetoId: selectedProjectId !== 'custom' ? selectedProjectId : undefined,
+        }
+      );
       setIsSaving(false);
       setSaveSuccess(true);
       toast.success('Orçamento salvo com sucesso!', {
-        description: `Salvo na aba "Meus Orçamentos & Agrupados".`,
+        description: `Vinculado a "${clientName}". Salvo na aba "Meus Orçamentos & Agrupados".`,
       });
 
       setTimeout(() => {
@@ -184,6 +215,114 @@ export function OrcamentoCurrentTab({
       setIsSaving(false);
       console.error('Erro ao salvar orçamento:', e);
       toast.error('Erro ao salvar orçamento localmente.');
+    }
+  };
+
+  // Atualizar custo unitário manualmente inline
+  const handleUpdateItemCost = (itemId: string, newCost: number) => {
+    const safeCost = isNaN(newCost) || newCost < 0 ? 0 : newCost;
+    const updated = items.map(it => {
+      if (it.id === itemId) {
+        return calculateItemPrice(
+          {
+            code: it.code,
+            description: it.description,
+            quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+            unit: it.unit,
+            unit_cost: safeCost,
+            margin: it.margin,
+          },
+          database,
+          settings
+        );
+      }
+      return it;
+    });
+
+    const res = recalculateBudget(updated, database, settings);
+    setItems(res.items);
+  };
+
+  // Atualizar margem individual do item inline
+  const handleUpdateItemMargin = (itemId: string, newMargin: number) => {
+    const safeMargin = isNaN(newMargin) || newMargin < 0 ? 0 : newMargin;
+    const updated = items.map(it => {
+      if (it.id === itemId) {
+        return calculateItemPrice(
+          {
+            code: it.code,
+            description: it.description,
+            quantity: it.original_quantity !== undefined ? it.original_quantity : it.quantity,
+            unit: it.unit,
+            unit_cost: it.unit_cost,
+            margin: safeMargin,
+          },
+          database,
+          settings
+        );
+      }
+      return it;
+    });
+
+    const res = recalculateBudget(updated, database, settings);
+    setItems(res.items);
+  };
+
+  // Atualizar quantidade de um item inline
+  const handleUpdateItemQty = (itemId: string, newQty: number) => {
+    const safeQty = isNaN(newQty) || newQty <= 0 ? 1 : newQty;
+    const updated = items.map(it => {
+      if (it.id === itemId) {
+        return calculateItemPrice(
+          {
+            code: it.code,
+            description: it.description,
+            quantity: safeQty,
+            unit: it.unit,
+            unit_cost: it.unit_cost,
+            margin: it.margin,
+          },
+          database,
+          settings
+        );
+      }
+      return it;
+    });
+
+    const res = recalculateBudget(updated, database, settings);
+    setItems(res.items);
+  };
+
+  // Seleção de cliente cadastrado
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+    if (clientId === 'custom') {
+      setSelectedProjectId('custom');
+      return;
+    }
+    const foundClient = clientsList.find(c => c.id === clientId);
+    if (foundClient) {
+      setClientName(foundClient.nome);
+      if (foundClient.telefone) setClientPhone(foundClient.telefone);
+      // Se tiver projetos vinculados, seleciona o primeiro por padrão
+      if (foundClient.projetos && foundClient.projetos.length > 0) {
+        const firstProj = foundClient.projetos[0];
+        setSelectedProjectId(firstProj.id);
+        if (firstProj.nome) setProjectName(firstProj.nome);
+      } else {
+        setSelectedProjectId('custom');
+      }
+    }
+  };
+
+  // Seleção de projeto do cliente
+  const handleSelectProject = (projId: string) => {
+    setSelectedProjectId(projId);
+    if (projId === 'custom') return;
+    const foundClient = clientsList.find(c => c.id === selectedClientId);
+    const foundProj = foundClient?.projetos?.find(p => p.id === projId);
+    if (foundProj && foundProj.nome) {
+      setProjectName(foundProj.nome);
     }
   };
 
@@ -399,69 +538,150 @@ export function OrcamentoCurrentTab({
         </Card>
       </div>
 
-      {/* Client and Project Quick Header Card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="w-60">
-            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cliente</Label>
+      {/* Quadrante Cliente, Ambiente e Projeto */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-[#c92031]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              Identificação do Orçamento (Cliente & Projeto)
+            </span>
+          </div>
+          {selectedClientId !== 'custom' && (
+            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+              <Check className="mr-1 h-3 w-3" /> Cliente do Sistema Conectado
+            </Badge>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-12 items-end">
+          {/* Cliente Seletor */}
+          <div className="md:col-span-4 space-y-1">
+            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Cliente Cadastrado
+            </Label>
+            <Select value={selectedClientId} onValueChange={handleSelectClient}>
+              <SelectTrigger className="h-9 text-xs font-medium bg-slate-50/50">
+                <SelectValue placeholder="Selecione ou digite manual..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom" className="font-semibold text-slate-700">
+                  ✏️ Manual / Cliente Avulso
+                </SelectItem>
+                {clientsList.map(c => (
+                  <SelectItem key={c.id} value={c.id} className="text-xs font-medium">
+                    👤 {c.nome} {c.telefone ? `(${c.telefone})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Nome do Cliente (Exibição / Edição) */}
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Nome do Cliente
+            </Label>
             <Input
               value={clientName}
               onChange={e => setClientName(e.target.value)}
               placeholder="Nome do cliente..."
-              className="mt-0.5 h-8 text-xs font-bold text-slate-900"
+              className="h-9 text-xs font-bold text-slate-900"
             />
           </div>
 
-          <div className="w-64">
-            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Ambiente / Projeto</Label>
+          {/* Projeto / Ambiente */}
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Ambiente / Projeto
+            </Label>
+            {selectedClientId !== 'custom' &&
+            clientsList.find(c => c.id === selectedClientId)?.projetos &&
+            (clientsList.find(c => c.id === selectedClientId)?.projetos?.length || 0) > 0 ? (
+              <Select value={selectedProjectId} onValueChange={handleSelectProject}>
+                <SelectTrigger className="h-9 text-xs font-medium bg-slate-50/50">
+                  <SelectValue placeholder="Selecione o projeto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom" className="font-semibold text-slate-700">
+                    📂 Novo Ambiente / Avulso
+                  </SelectItem>
+                  {clientsList
+                    .find(c => c.id === selectedClientId)
+                    ?.projetos?.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">
+                        📐 {p.nome || 'Projeto sem nome'} {p.status ? `(${p.status})` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={projectName}
+                onChange={e => setProjectName(e.target.value)}
+                placeholder="Ex: Cozinha Planejada + Ilha"
+                className="h-9 text-xs font-medium text-slate-800"
+              />
+            )}
+          </div>
+
+          {/* Action Buttons: Direct Save & PDF */}
+          <div className="md:col-span-2 flex items-center gap-1.5 justify-end">
+            <Button
+              onClick={handleDirectExportPDF}
+              disabled={items.length === 0}
+              variant="outline"
+              size="sm"
+              className="h-9 border-[#cbb27a] bg-[#cbb27a]/10 text-[#886e35] hover:bg-[#cbb27a]/20 text-xs font-semibold px-2.5"
+              title="Baixar proposta em PDF"
+            >
+              <Download className="mr-1 h-3.5 w-3.5" />
+              PDF
+            </Button>
+
+            <Button
+              onClick={handleDirectSave}
+              disabled={items.length === 0 || isSaving}
+              size="sm"
+              className={`h-9 font-semibold text-xs px-3 transition-all duration-300 ${
+                saveSuccess
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  : 'bg-[#c92031] text-white hover:bg-[#aa1726]'
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Salvando...
+                </>
+              ) : saveSuccess ? (
+                <>
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  Salvo!
+                </>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                  Salvar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Input descritivo manual de ambiente caso tenha selecionado um projeto específico ou queira customizar */}
+        {selectedClientId !== 'custom' && selectedProjectId !== 'custom' && (
+          <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-600">
+            <FolderKanban className="h-3.5 w-3.5 text-blue-600" />
+            <span>Nome do ambiente:</span>
             <Input
               value={projectName}
               onChange={e => setProjectName(e.target.value)}
-              placeholder="Ex: Cozinha Planejada + Ilha"
-              className="mt-0.5 h-8 text-xs font-medium text-slate-800"
+              placeholder="Ex: Cozinha Integrada"
+              className="h-7 text-xs w-72"
             />
           </div>
-        </div>
-
-        {/* Action Buttons: Direct Save & PDF */}
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={handleDirectExportPDF}
-            disabled={items.length === 0}
-            variant="outline"
-            className="h-9 border-[#cbb27a] bg-[#cbb27a]/10 text-[#886e35] hover:bg-[#cbb27a]/20"
-          >
-            <Download className="mr-1.5 h-4 w-4" />
-            Exportar PDF
-          </Button>
-
-          <Button
-            onClick={handleDirectSave}
-            disabled={items.length === 0 || isSaving}
-            className={`h-9 font-semibold text-xs transition-all duration-300 ${
-              saveSuccess
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                : 'bg-[#c92031] text-white hover:bg-[#aa1726]'
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : saveSuccess ? (
-              <>
-                <Check className="mr-1.5 h-4 w-4" />
-                Salvo com Sucesso!
-              </>
-            ) : (
-              <>
-                <Save className="mr-1.5 h-4 w-4" />
-                Salvar Orçamento
-              </>
-            )}
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Toolbar: Import & Chapa Switch */}
@@ -576,7 +796,7 @@ export function OrcamentoCurrentTab({
             Nenhum arquivo ou item carregado
           </h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            Importe a lista de peças exportada pelo <strong>Promob (XML ou TXT)</strong>. O sistema reconhece automaticamente as marcas de chapa (Arauco, Duratex, Guararapes, etc.) e calcula os custos e preços com precisão.
+            Importe a lista de peças exportada pelo <strong>Promob (XML ou TXT)</strong>. O orçamento inicia limpo para você inserir os custos manuais diretamente na tabela, consultando a aba de Tabela de Preços por Marca quando desejar.
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Button
@@ -602,12 +822,14 @@ export function OrcamentoCurrentTab({
               <thead className="bg-[#17191d] text-[11px] uppercase tracking-wider text-white">
                 <tr>
                   <th className="py-3 pl-4 pr-2 font-semibold">#</th>
-                  <th className="px-3 py-3 font-semibold">Código / Referência</th>
+                  <th className="px-3 py-3 font-semibold">Código / Peça</th>
                   <th className="px-3 py-3 font-semibold">Descrição do Material</th>
-                  <th className="px-3 py-3 text-center font-semibold">Qtd</th>
-                  <th className="px-3 py-3 text-center font-semibold">Un</th>
-                  <th className="px-3 py-3 text-right font-semibold">Custo Unit.</th>
-                  <th className="px-3 py-3 text-center font-semibold">Margem</th>
+                  <th className="px-2 py-3 text-center font-semibold">Qtd</th>
+                  <th className="px-2 py-3 text-center font-semibold">Un</th>
+                  <th className="px-3 py-3 text-right font-semibold text-amber-300">
+                    Custo Unit. (R$) ✏️
+                  </th>
+                  <th className="px-2 py-3 text-center font-semibold">Margem</th>
                   <th className="px-3 py-3 text-right font-semibold">Preço Unit.</th>
                   <th className="px-3 py-3 text-right font-semibold">Total</th>
                   <th className="py-3 pl-2 pr-4 text-center font-semibold">Ação</th>
@@ -626,23 +848,14 @@ export function OrcamentoCurrentTab({
 
                       <td className="px-3 py-2.5 font-mono font-semibold text-slate-900">
                         <div className="flex items-center gap-1.5">
-                          <span className="truncate max-w-[280px]" title={item.code}>
+                          <span className="truncate max-w-[240px]" title={item.code}>
                             {item.code}
                           </span>
 
-                          {item.found ? (
-                            <span title="Chapa/Produto reconhecido com sucesso!">
+                          {item.found && item.unit_cost > 0 && (
+                            <span title="Item precificado">
                               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                             </span>
-                          ) : (
-                            <button
-                              onClick={() => handleOpenLinkModal(item)}
-                              className="flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 border border-amber-200"
-                              title="Clique para vincular a marca e linha correta"
-                            >
-                              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                              Vincular
-                            </button>
                           )}
                         </div>
                       </td>
@@ -661,22 +874,57 @@ export function OrcamentoCurrentTab({
                         )}
                       </td>
 
-                      <td className="px-3 py-2.5 text-center font-semibold text-slate-900">
-                        {item.quantity.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                      <td className="px-2 py-2 text-center">
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0.01"
+                          value={item.quantity}
+                          onChange={e => handleUpdateItemQty(item.id, parseFloat(e.target.value) || 1)}
+                          className="h-7 w-16 text-center text-xs font-semibold px-1 py-0 border-slate-200 mx-auto"
+                        />
                       </td>
 
-                      <td className="px-3 py-2.5 text-center">
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
+                      <td className="px-2 py-2.5 text-center">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 text-[11px]">
                           {item.unit}
                         </span>
                       </td>
 
-                      <td className="px-3 py-2.5 text-right font-semibold text-slate-800">
-                        {item.unit_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {/* Custo Unitário Manual Inline */}
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-slate-400 text-[10px] font-medium">R$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.unit_cost === 0 ? '' : item.unit_cost}
+                            onChange={e => handleUpdateItemCost(item.id, parseFloat(e.target.value) || 0)}
+                            placeholder="0,00"
+                            className={`h-7 w-24 text-right text-xs font-bold px-2 py-0 border ${
+                              item.unit_cost === 0
+                                ? 'border-amber-300 bg-amber-50/50 text-amber-900 placeholder:text-amber-400'
+                                : 'border-slate-200 text-slate-900 focus:border-[#c92031]'
+                            }`}
+                            title="Digite o custo unitário do material"
+                          />
+                        </div>
                       </td>
 
-                      <td className="px-3 py-2.5 text-center font-semibold text-slate-700">
-                        {item.margin}%
+                      {/* Margem Individual Inline */}
+                      <td className="px-2 py-2 text-center">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            value={item.margin}
+                            onChange={e => handleUpdateItemMargin(item.id, parseFloat(e.target.value) || 0)}
+                            className="h-7 w-14 text-center text-xs font-medium px-1 py-0 border-slate-200"
+                          />
+                          <span className="text-slate-400 text-[10px]">%</span>
+                        </div>
                       </td>
 
                       <td className="px-3 py-2.5 text-right font-medium text-slate-600">
@@ -694,7 +942,7 @@ export function OrcamentoCurrentTab({
                             size="icon"
                             onClick={() => handleOpenLinkModal(item)}
                             className="h-7 w-7 text-slate-400 hover:text-blue-600"
-                            title="Alterar/Vincular Chapa"
+                            title="Consultar / Vincular Chapa da Tabela"
                           >
                             <Link2 className="h-3.5 w-3.5" />
                           </Button>
@@ -703,6 +951,7 @@ export function OrcamentoCurrentTab({
                             size="icon"
                             onClick={() => handleRemoveItem(item.id)}
                             className="h-7 w-7 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                            title="Remover Item"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>

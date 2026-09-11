@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { Calculator, FileSpreadsheet, Database, Settings } from 'lucide-react';
@@ -35,6 +37,22 @@ function OrcamentoPage() {
   const [database, setDatabase] = useState<ProductItem[]>(DEFAULT_MATERIALS);
   const [settings, setSettings] = useState<BudgetSettings>(DEFAULT_SETTINGS);
   const [savedBudgets, setSavedBudgets] = useState<SavedBudget[]>([]);
+
+  // Fetch registered clients and their projects from Supabase
+  const { data: clientsList = [] } = useQuery({
+    queryKey: ['orcamento-clientes-projetos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, nome, telefone, email, projetos(id, nome, status)')
+        .order('nome');
+      if (error) {
+        console.error('Erro ao buscar clientes no orçamento:', error);
+        return [];
+      }
+      return data || [];
+    },
+  });
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -116,11 +134,18 @@ function OrcamentoPage() {
   };
 
   // Save current budget
-  const handleSaveBudget = (clientName: string, projectName: string) => {
+  const handleSaveBudget = (
+    clientName: string,
+    projectName: string,
+    extra?: { clientId?: string; clientPhone?: string; projetoId?: string }
+  ) => {
     const newBudget: SavedBudget = {
       id: `budget-${Date.now()}`,
       name: `${clientName} - ${projectName || 'Orçamento'}`,
       client_name: clientName,
+      client_phone: extra?.clientPhone,
+      client_id: extra?.clientId,
+      projeto_id: extra?.projetoId,
       project_environment: projectName,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -182,7 +207,7 @@ function OrcamentoPage() {
             Calculadora de Orçamentos (DF Móveis)
           </h2>
           <p className="text-xs text-slate-500">
-            Importação inteligente do Promob, catálogo oficial de chapas por marca (2025), conversão de 5,09m² e margem de lucro automatizada.
+            Conectada aos Clientes e Projetos cadastrados, com inserção de custos sob demanda, margem automática e exportação comercial em PDF.
           </p>
         </div>
       </div>
@@ -229,6 +254,7 @@ function OrcamentoPage() {
             settings={settings}
             setSettings={setSettings}
             totals={totals}
+            clientsList={clientsList}
             onSaveBudget={handleSaveBudget}
           />
         </TabsContent>
