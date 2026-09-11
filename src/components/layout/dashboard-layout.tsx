@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Bell,
   BriefcaseBusiness,
+  Calculator,
   CalendarDays,
   CircleDollarSign,
   ContactRound,
@@ -55,10 +56,12 @@ const PAGE_TITLES: Record<string, string> = {
   "/projetista/perfil": "Meu perfil",
   "/demandas": "Central de distribuição",
   "/agenda": "Agenda compartilhada",
+  "/orcamento": "Calculadora de Orçamentos",
 };
 
 const adminLinks = [
   { title: "Visão geral", icon: LayoutDashboard, to: "/admin/dashboard" },
+  { title: "Orçamento", icon: Calculator, to: "/orcamento" },
   { title: "Distribuição", icon: RouteIcon, to: "/demandas" },
   { title: "Clientes", icon: ContactRound, to: "/projetista/clientes" },
   { title: "Agenda da loja", icon: CalendarDays, to: "/agenda" },
@@ -69,6 +72,7 @@ const adminLinks = [
 
 const designerLinks = [
   { title: "Minha visão", icon: LayoutDashboard, to: "/projetista/dashboard" },
+  { title: "Orçamento", icon: Calculator, to: "/orcamento" },
   { title: "Próximo da fila", icon: RouteIcon, to: "/demandas" },
   { title: "Meus projetos", icon: BriefcaseBusiness, to: "/projetista/meus-projetos" },
   { title: "Clientes", icon: ContactRound, to: "/projetista/clientes" },

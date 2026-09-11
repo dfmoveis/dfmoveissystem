@@ -16,6 +16,7 @@ import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardAgendaRouteImport } from './routes/_dashboard/agenda'
 import { Route as DashboardDemandasRouteImport } from './routes/_dashboard/demandas'
+import { Route as DashboardOrcamentoRouteImport } from './routes/_dashboard/orcamento'
 import { Route as DashboardAdminComissoesRouteImport } from './routes/_dashboard/admin/comissoes'
 import { Route as DashboardAdminCrmRouteImport } from './routes/_dashboard/admin/crm'
 import { Route as DashboardAdminDashboardRouteImport } from './routes/_dashboard/admin/dashboard'
@@ -57,6 +58,11 @@ const DashboardAgendaRoute = DashboardAgendaRouteImport.update({
 const DashboardDemandasRoute = DashboardDemandasRouteImport.update({
   id: '/demandas',
   path: '/demandas',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardOrcamentoRoute = DashboardOrcamentoRouteImport.update({
+  id: '/orcamento',
+  path: '/orcamento',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardAdminComissoesRoute = DashboardAdminComissoesRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
   '/demandas': typeof DashboardDemandasRoute
+  '/orcamento': typeof DashboardOrcamentoRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agenda': typeof DashboardAgendaRoute
   '/demandas': typeof DashboardDemandasRoute
+  '/orcamento': typeof DashboardOrcamentoRoute
   '/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/admin/crm': typeof DashboardAdminCrmRoute
   '/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_dashboard/agenda': typeof DashboardAgendaRoute
   '/_dashboard/demandas': typeof DashboardDemandasRoute
+  '/_dashboard/orcamento': typeof DashboardOrcamentoRoute
   '/_dashboard/admin/comissoes': typeof DashboardAdminComissoesRoute
   '/_dashboard/admin/crm': typeof DashboardAdminCrmRoute
   '/_dashboard/admin/dashboard': typeof DashboardAdminDashboardRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/demandas'
+    | '/orcamento'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agenda'
     | '/demandas'
+    | '/orcamento'
     | '/admin/comissoes'
     | '/admin/crm'
     | '/admin/dashboard'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_dashboard/agenda'
     | '/_dashboard/demandas'
+    | '/_dashboard/orcamento'
     | '/_dashboard/admin/comissoes'
     | '/_dashboard/admin/crm'
     | '/_dashboard/admin/dashboard'
@@ -265,6 +277,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardDemandasRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/orcamento': {
+      id: '/_dashboard/orcamento'
+      path: '/orcamento'
+      fullPath: '/orcamento'
+      preLoaderRoute: typeof DashboardOrcamentoRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/admin/comissoes': {
       id: '/_dashboard/admin/comissoes'
       path: '/admin/comissoes'
@@ -327,6 +346,7 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardAgendaRoute: typeof DashboardAgendaRoute
   DashboardDemandasRoute: typeof DashboardDemandasRoute
+  DashboardOrcamentoRoute: typeof DashboardOrcamentoRoute
   DashboardAdminComissoesRoute: typeof DashboardAdminComissoesRoute
   DashboardAdminCrmRoute: typeof DashboardAdminCrmRoute
   DashboardAdminDashboardRoute: typeof DashboardAdminDashboardRoute
@@ -340,6 +360,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAgendaRoute: DashboardAgendaRoute,
   DashboardDemandasRoute: DashboardDemandasRoute,
+  DashboardOrcamentoRoute: DashboardOrcamentoRoute,
   DashboardAdminComissoesRoute: DashboardAdminComissoesRoute,
   DashboardAdminCrmRoute: DashboardAdminCrmRoute,
   DashboardAdminDashboardRoute: DashboardAdminDashboardRoute,
