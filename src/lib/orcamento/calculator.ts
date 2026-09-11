@@ -1,4 +1,5 @@
 import { BudgetItem, BudgetSettings, ProductItem } from './types';
+import { INITIAL_CHAPAS_CATALOG, CatalogByBrand, BrandCatalog } from './chapas-catalog';
 
 // Constante padrão de Marcenaria no Brasil: Chapa MDF (2,75m x 1,85m = 5,0875 m² ≈ 5,09 m²)
 export const CHAPA_AREA_M2 = 5.09;
@@ -13,7 +14,7 @@ export function normalizeCode(value: unknown): string {
   return String(value ?? '').trim().toLowerCase();
 }
 
-// Normalização de texto removendo acentos e espaços
+// Normalização de texto removendo acentos e caracteres especiais
 export function normalizeText(value: unknown): string {
   return String(value ?? '')
     .normalize('NFD')
@@ -22,17 +23,38 @@ export function normalizeText(value: unknown): string {
     .toLowerCase();
 }
 
+// Lista de marcas conhecidas na marcenaria
+const KNOWN_BRANDS = [
+  'Arauco',
+  'Duratex',
+  'Guararapes',
+  'Greenplac',
+  'Bernek',
+  'Berneck',
+  'Sudati',
+  'Eucatex',
+  'Formica',
+  'Fórmica',
+];
+
 // Detecta se o item é chapa de MDF ou MDP
 export function isChapa(code: string, description: string): boolean {
   const normCode = normalizeCode(code);
   const normDesc = normalizeText(description);
   return (
     normCode.includes('chapa') ||
-    normCode.endsWith('.mdf') ||
-    normCode.endsWith('.mdp') ||
+    normCode.includes('.mdf') ||
+    normCode.includes('.mdp') ||
     normDesc.includes('mdf') ||
     normDesc.includes('mdp') ||
-    normDesc.includes('chapa')
+    normDesc.includes('chapa') ||
+    normDesc.includes('lateral') ||
+    normDesc.includes('fundo') ||
+    normDesc.includes('prateleira') ||
+    normDesc.includes('gaveta') ||
+    normDesc.includes('tampo') ||
+    normDesc.includes('painel') ||
+    normDesc.includes('porta')
   );
 }
 
@@ -64,7 +86,129 @@ export function calculateAdditionsFactor(settings: BudgetSettings): number {
   return 1 + totalAcrescimosPercentual / 100;
 }
 
-// Localiza o produto no banco cadastrado pelo código principal ou subcódigos
+// SMART MATCHER DE PROMOB: Analisa códigos complexos como 1.0139E.15.Arauco.Beige Matt.MDF BP 2L Revest
+export function smartMatchPromobChapa(
+  code: string,
+  description: string,
+  catalog: CatalogByBrand = INITIAL_CHAPAS_CATALOG
+): {
+  matched: boolean;
+  brand: string | null;
+  line: string | null;
+  thickness: '6mm' | '15mm' | '18mm' | '25mm';
+  m2Cost: number;
+  boardPrice: number;
+} {
+  const rawText = `${code} ${description}`.trim();
+  const normText = normalizeText(rawText);
+
+  // 1. Detecta Marca
+  let detectedBrand: string | null = null;
+  for (const b of KNOWN_BRANDS) {
+    if (normText.includes(normalizeText(b))) {
+      detectedBrand = b === 'Berneck' ? 'Bernek' : b === 'Formica' ? 'Fórmica' : b;
+      break;
+    }
+  }
+
+  // 2. Detecta Espessura (6, 15, 18, 25)
+  let thickness: '6mm' | '15mm' | '18mm' | '25mm' = '15mm';
+  if (
+    /\.6\./.test(code) ||
+    /\b6mm\b/i.test(code) ||
+    /\b6mm\b/i.test(description) ||
+    description.endsWith(' 6') ||
+    code.includes('.6.arauco') ||
+    code.includes('.6.duratex')
+  ) {
+    thickness = '6mm';
+  } else if (
+    /\.18\./.test(code) ||
+    /\b18mm\b/i.test(code) ||
+    /\b18mm\b/i.test(description) ||
+    description.endsWith(' 18')
+  ) {
+    thickness = '18mm';
+  } else if (
+    /\.25\./.test(code) ||
+    /\b25mm\b/i.test(code) ||
+    /\b25mm\b/i.test(description) ||
+    description.endsWith(' 25')
+  ) {
+    thickness = '25mm';
+  } else if (
+    /\.15\./.test(code) ||
+    /\b15mm\b/i.test(code) ||
+    /\b15mm\b/i.test(description) ||
+    description.endsWith(' 15')
+  ) {
+    thickness = '15mm';
+  }
+
+  if (!detectedBrand || !catalog[detectedBrand] || catalog[detectedBrand].type !== 'brand') {
+    return { matched: false, brand: null, line: null, thickness, m2Cost: 0, boardPrice: 0 };
+  }
+
+  const brandData = catalog[detectedBrand] as BrandCatalog;
+  const lines = brandData.lines;
+
+  // Extrai palavras-chave do acabamento/cor (ex: "Beige Matt" -> ["beige", "matt"])
+  const tokens = normalizeText(code)
+    .replace(/[0-9\._\-]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && !['mdf', 'revest', 'arauco', 'duratex', 'guararapes'].includes(t));
+
+  let bestScore = 0;
+  let bestLine = null;
+
+  for (const line of lines) {
+    const normLine = normalizeText(line.name);
+    let score = 0;
+
+    for (const t of tokens) {
+      if (normLine.includes(t)) {
+        score += 2;
+      } else if (t.includes('mat') && normLine.includes('matt')) {
+        score += 3;
+      } else if (t.includes('vert') && normLine.includes('vert')) {
+        score += 3;
+      } else if (t.includes('chess') && normLine.includes('chess')) {
+        score += 3;
+      } else if (t.includes('ultra') && normLine.includes('ultra')) {
+        score += 3;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLine = line;
+    }
+  }
+
+  // Se não encontrou por tokens específicos mas é da marca, usa a linha padrão/intermediária
+  if (!bestLine && lines.length > 0) {
+    bestLine = lines[0];
+  }
+
+  if (bestLine) {
+    const boardPrice = bestLine.prices[thickness] || bestLine.prices['15mm'] || 0;
+    if (boardPrice && boardPrice > 0) {
+      const m2Cost = round2(boardPrice / CHAPA_AREA_M2);
+      return {
+        matched: true,
+        brand: detectedBrand,
+        line: bestLine.name,
+        thickness,
+        m2Cost,
+        boardPrice,
+      };
+    }
+  }
+
+  return { matched: false, brand: detectedBrand, line: null, thickness, m2Cost: 0, boardPrice: 0 };
+}
+
+// Localiza o produto no banco cadastrado pelo código ou subcódigos
 export function matchProduct(
   code: string,
   description: string,
@@ -105,18 +249,30 @@ export function calculateItemPrice(
   database: ProductItem[],
   settings: BudgetSettings
 ): BudgetItem {
+  // 1. Tenta correspondência direta no banco de produtos
   const { product: matched, isSubcodeMatch } = matchProduct(item.code, item.description, database);
-  const found = !!matched;
 
-  const isItemChapa = isChapa(item.code, item.description);
+  // 2. Se não encontrou no banco direto, roda o Smart Matcher de Chapas por Marca (Arauco, Duratex, etc.)
+  const smart = !matched ? smartMatchPromobChapa(item.code, item.description) : null;
+
+  const found = !!matched || (smart ? smart.matched : false);
+  const isItemChapa = isChapa(item.code, item.description) || (smart ? smart.matched : false);
   const isItemFita = isFitaBorda(item.code, item.description);
 
   // Custo base unitário
-  let unit_cost = item.unit_cost !== undefined ? item.unit_cost : (matched ? matched.unit_price : 0);
+  let unit_cost = 0;
+  if (item.unit_cost !== undefined && item.unit_cost > 0) {
+    unit_cost = item.unit_cost;
+  } else if (matched) {
+    unit_cost = matched.unit_price;
+  } else if (smart && smart.matched) {
+    unit_cost = smart.m2Cost;
+  }
+
   const fitaMetros = matched?.fita_metros || extractFitaMetros(item.description) || 20;
 
   // Se for Fita de Borda em rolo e a lista vier em metros lineares (M):
-  if (isItemFita && fitaMetros > 0 && item.unit?.toUpperCase() === 'M') {
+  if (isItemFita && fitaMetros > 0 && item.unit?.toUpperCase() === 'M' && unit_cost > 0) {
     unit_cost = round2(unit_cost / fitaMetros);
   }
 
@@ -134,7 +290,7 @@ export function calculateItemPrice(
   let effectiveQuantity = item.quantity;
   let displayUnit = matched?.unit || item.unit || 'UN';
 
-  if (isItemChapa && settings.chapa_mode === 'chapa') {
+  if (isItemChapa && settings.chapa_mode === 'chapa' && displayUnit.toUpperCase() === 'M2') {
     const chapasCount = item.quantity / CHAPA_AREA_M2;
     if (settings.chapa_rounding === 'up') {
       effectiveQuantity = Math.ceil(chapasCount);
@@ -149,11 +305,18 @@ export function calculateItemPrice(
   const total_cost = round2(unit_cost * effectiveQuantity);
   const total_price = round2(unit_price * effectiveQuantity);
 
+  let finalDescription = item.description;
+  if (smart && smart.matched && smart.brand && smart.line) {
+    finalDescription = `${item.description} [${smart.brand} - ${smart.line} ${smart.thickness}]`;
+  } else if (matched) {
+    finalDescription = `${item.description} (${matched.description})`;
+  }
+
   return {
     id: `item-${Math.random().toString(36).substr(2, 9)}`,
     item_number: 1,
     code: matched ? matched.code : item.code,
-    description: matched ? `${item.description} (${matched.description})` : item.description,
+    description: finalDescription,
     quantity: effectiveQuantity,
     unit: displayUnit,
     unit_cost,
@@ -168,11 +331,11 @@ export function calculateItemPrice(
     original_code: item.code,
     original_quantity: item.quantity,
     original_unit: item.unit,
-    resolved_from_subcode: isSubcodeMatch,
+    resolved_from_subcode: isSubcodeMatch || (smart ? smart.matched : false),
   };
 }
 
-// Recalcula todos os itens do orçamento
+// Recalcula todos os itens do orçamento de forma ultra rápida
 export function recalculateBudget(
   items: BudgetItem[],
   database: ProductItem[],
