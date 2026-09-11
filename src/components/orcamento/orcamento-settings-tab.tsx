@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Plus, Trash2, CheckCircle2, Percent } from 'lucide-react';
+import { Settings, Plus, Trash2, CheckCircle2, Percent, Loader2, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,8 @@ export function OrcamentoSettingsTab({ settings, setSettings, onSaveSettings }: 
   const [form, setForm] = useState<BudgetSettings>({ ...settings });
   const [newAdditionName, setNewAdditionName] = useState('');
   const [newAdditionVal, setNewAdditionVal] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const additionsFactor = calculateAdditionsFactor(form);
   const additionsTotalPercent = (additionsFactor - 1) * 100;
@@ -51,13 +53,44 @@ export function OrcamentoSettingsTab({ settings, setSettings, onSaveSettings }: 
   };
 
   const handleSave = () => {
-    setSettings(form);
-    onSaveSettings(form);
-    toast.success('Configurações salvas com sucesso!');
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    setTimeout(() => {
+      setSettings(form);
+      onSaveSettings(form);
+      setIsSaving(false);
+      setSaveSuccess(true);
+
+      toast.success('Configurações salvas com sucesso!', {
+        description: `A margem padrão de ${form.margin}% foi aplicada a todos os itens do orçamento.`,
+      });
+
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3500);
+    }, 450);
   };
 
   return (
     <div className="max-w-4xl space-y-6">
+      {/* Banner de Sucesso pós-salvamento */}
+      {saveSuccess && (
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+            <Check className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Configurações Atualizadas com Sucesso!</p>
+            <p className="text-xs text-emerald-700">
+              A margem padrão de <strong>{form.margin}%</strong> e os acréscimos globais de{' '}
+              <strong>+{additionsTotalPercent.toFixed(1)}%</strong> foram aplicados automaticamente a todos os orçamentos e itens importados.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Margem Padrão de Lucro */}
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardHeader className="border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
@@ -67,33 +100,36 @@ export function OrcamentoSettingsTab({ settings, setSettings, onSaveSettings }: 
                 Margem Padrão de Lucro
               </CardTitle>
               <CardDescription className="text-xs">
-                Defina o percentual de markup padrão aplicado sobre o custo dos materiais.
+                Defina o percentual de markup padrão. Todo arquivo ou item importado utilizará automaticamente este percentual.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-5">
-          <div className="flex items-center gap-4">
-            <div className="w-44">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-48">
               <Label className="text-xs font-semibold text-slate-700">Margem Padrão (%)</Label>
               <div className="relative mt-1">
                 <Input
                   type="number"
                   value={form.margin}
                   onChange={e => setForm({ ...form, margin: parseFloat(e.target.value) || 0 })}
-                  className="pr-8 text-sm font-bold"
+                  className="pr-8 text-base font-bold text-slate-900 focus:border-[#c92031]"
                 />
                 <Percent className="absolute right-2.5 top-2.5 h-4 w-4 text-slate-400" />
               </div>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600 flex-1">
-              <p className="font-semibold text-slate-800">Exemplo prático:</p>
-              <p>
-                Com margem de <strong>{form.margin}%</strong>, um item com custo de R$ 100,00 terá preço base de{' '}
+              <p className="font-semibold text-slate-800">Cálculo Automático na Importação:</p>
+              <p className="mt-0.5">
+                Ao importar qualquer arquivo do <strong>Promob (XML/TXT/CSV)</strong>, cada peça de material receberá automaticamente a margem de{' '}
+                <strong className="text-[#c92031]">{form.margin}%</strong>, sem necessidade de alteração manual.
+              </p>
+              <p className="mt-1 text-slate-500">
+                Exemplo: Custo de R$ 100,00 → Preço base com margem:{' '}
                 <strong>
                   {(100 * (1 + form.margin / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </strong>{' '}
-                antes dos acréscimos operacionais.
+                </strong>
               </p>
             </div>
           </div>
@@ -250,9 +286,30 @@ export function OrcamentoSettingsTab({ settings, setSettings, onSaveSettings }: 
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="bg-[#c92031] text-white hover:bg-[#aa1726]">
-          Salvar Configurações
+      {/* Botão de Salvar com Animação Visual Clara */}
+      <div className="flex justify-end pt-2">
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className={`h-11 px-6 font-semibold transition-all duration-300 ${
+            saveSuccess
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+              : 'bg-[#c92031] text-white hover:bg-[#aa1726]'
+          }`}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Salvando Configurações...
+            </>
+          ) : saveSuccess ? (
+            <>
+              <Check className="mr-2 h-5 w-5 animate-bounce" />
+              Salvo com Sucesso!
+            </>
+          ) : (
+            'Salvar Configurações'
+          )}
         </Button>
       </div>
     </div>

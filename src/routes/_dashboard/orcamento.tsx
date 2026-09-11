@@ -95,12 +95,24 @@ function OrcamentoPage() {
   // Totals calculation
   const { totals } = recalculateBudget(items, database, settings);
 
-  // Save Settings
+  // Save Settings: Persist and immediately propagate new margin to all budget items
   const handleSaveSettings = (newSettings: BudgetSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('df_orcamento_settings', JSON.stringify(newSettings));
-    const res = recalculateBudget(items, database, newSettings);
-    setItems(res.items);
+    try {
+      localStorage.setItem('df_orcamento_settings', JSON.stringify(newSettings));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Update all items in the active budget with the new margin
+    if (items.length > 0) {
+      const updatedItems = items.map(it => ({
+        ...it,
+        margin: newSettings.margin,
+      }));
+      const res = recalculateBudget(updatedItems, database, newSettings);
+      setItems(res.items);
+    }
   };
 
   // Save current budget
@@ -170,7 +182,7 @@ function OrcamentoPage() {
             Calculadora de Orçamentos (DF Móveis)
           </h2>
           <p className="text-xs text-slate-500">
-            Importação inteligente do Promob, conversão de chapas (5,09m²), fitas de borda e formação contábil de preços.
+            Importação inteligente do Promob, catálogo oficial de chapas por marca (2025), conversão de 5,09m² e margem de lucro automatizada.
           </p>
         </div>
       </div>
@@ -200,7 +212,7 @@ function OrcamentoPage() {
 
           <TabsTrigger value="database" className="text-xs font-semibold data-[state=active]:bg-white">
             <Database className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-            Tabela de Preços & Materiais
+            Tabela de Preços & Chapas por Marca (2025)
           </TabsTrigger>
 
           <TabsTrigger value="settings" className="text-xs font-semibold data-[state=active]:bg-white">
@@ -231,7 +243,11 @@ function OrcamentoPage() {
         </TabsContent>
 
         <TabsContent value="database">
-          <OrcamentoDatabaseTab database={database} setDatabase={setDatabase} />
+          <OrcamentoDatabaseTab 
+            database={database} 
+            setDatabase={setDatabase} 
+            settings={settings} 
+          />
         </TabsContent>
 
         <TabsContent value="settings">
