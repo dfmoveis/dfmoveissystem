@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { 
   Search, Plus, Trash2, Edit2, RotateCcw, Package, Layers, Download, Upload, 
   Check, DollarSign, ArrowRight, ShieldAlert, Sparkles, Filter
@@ -22,23 +22,18 @@ import {
   INITIAL_CHAPAS_CATALOG, CatalogByBrand, ChapaLineItem, AcessorioItem, BrandCatalog, AcessoriosCatalog 
 } from '@/lib/orcamento/chapas-catalog';
 import { CHAPA_AREA_M2, round2, chapaSalePrice, calculateAdditionsFactor } from '@/lib/orcamento/calculator';
+import { parseLocaleNumber } from '@/lib/orcamento/parsers';
 
 interface DatabaseTabProps {
   database: ProductItem[];
   setDatabase: React.Dispatch<React.SetStateAction<ProductItem[]>>;
   settings: BudgetSettings;
+  catalog: CatalogByBrand;
+  setCatalog: React.Dispatch<React.SetStateAction<CatalogByBrand>>;
 }
 
-export function OrcamentoDatabaseTab({ database, setDatabase, settings }: DatabaseTabProps) {
+export function OrcamentoDatabaseTab({ database, setDatabase, settings, catalog, setCatalog }: DatabaseTabProps) {
   const [subTab, setSubTab] = useState<'chapas' | 'produtos'>('chapas');
-  const [catalog, setCatalog] = useState<CatalogByBrand>(() => {
-    try {
-      const saved = localStorage.getItem('df_orcamento_chapas_catalog');
-      return saved ? JSON.parse(saved) : INITIAL_CHAPAS_CATALOG;
-    } catch {
-      return INITIAL_CHAPAS_CATALOG;
-    }
-  });
 
   const [selectedBrand, setSelectedBrand] = useState<string>('Duratex');
   const [brandSearch, setBrandSearch] = useState('');
@@ -69,15 +64,6 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
   const [prodCategory, setProdCategory] = useState('MDF');
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
-
-  // Sync catalog to localStorage and update database
-  useEffect(() => {
-    try {
-      localStorage.setItem('df_orcamento_chapas_catalog', JSON.stringify(catalog));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [catalog]);
 
   const brandNames = Object.keys(catalog);
   const activeBrandData = catalog[selectedBrand];
@@ -113,10 +99,15 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
   const handleSaveLine = () => {
     if (!editingLine) return;
 
-    const p6 = parseFloat(editPrice6mm.replace(',', '.')) || null;
-    const p15 = parseFloat(editPrice15mm.replace(',', '.')) || null;
-    const p18 = parseFloat(editPrice18mm.replace(',', '.')) || null;
-    const p25 = parseFloat(editPrice25mm.replace(',', '.')) || null;
+    const parsePrice = (value: string) => value.trim() ? parseLocaleNumber(value, -1) : null;
+    const p6 = parsePrice(editPrice6mm);
+    const p15 = parsePrice(editPrice15mm);
+    const p18 = parsePrice(editPrice18mm);
+    const p25 = parsePrice(editPrice25mm);
+    if ([p6, p15, p18, p25].some(price => price !== null && price <= 0)) {
+      toast.error('Os preços informados precisam ser maiores que zero.');
+      return;
+    }
 
     setCatalog(prev => {
       const brandObj = prev[selectedBrand];
@@ -159,7 +150,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
     prices: { p6: number | null; p15: number | null; p18: number | null; p25: number | null }
   ) => {
     setDatabase(prev => {
-      let next = [...prev];
+      const next = [...prev];
       const thicknesses = [
         { th: '15mm', price: prices.p15 },
         { th: '18mm', price: prices.p18 },
@@ -169,7 +160,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
 
       for (const item of thicknesses) {
         if (!item.price) continue;
-        const code = `${brand.toUpperCase()}-${lineName.toUpperCase().replace(/\\s+/g, '_')}-${item.th.toUpperCase()}`;
+        const code = `${brand.toUpperCase()}-${lineName.toUpperCase().replace(/\s+/g, '_')}-${item.th.toUpperCase()}`;
         const m2Price = chapaSalePrice(item.price);
 
         const existingIdx = next.findIndex(p => p.code === code);
@@ -209,17 +200,22 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
       return;
     }
 
-    const p6 = parseFloat(editPrice6mm.replace(',', '.')) || null;
-    const p15 = parseFloat(editPrice15mm.replace(',', '.')) || null;
-    const p18 = parseFloat(editPrice18mm.replace(',', '.')) || null;
-    const p25 = parseFloat(editPrice25mm.replace(',', '.')) || null;
+    const parsePrice = (value: string) => value.trim() ? parseLocaleNumber(value, -1) : null;
+    const p6 = parsePrice(editPrice6mm);
+    const p15 = parsePrice(editPrice15mm);
+    const p18 = parsePrice(editPrice18mm);
+    const p25 = parsePrice(editPrice25mm);
+    if ([p6, p15, p18, p25].some(price => price !== null && price <= 0)) {
+      toast.error('Os preços informados precisam ser maiores que zero.');
+      return;
+    }
 
     const newLine: ChapaLineItem = {
       id: `${selectedBrand.toLowerCase()}-${Date.now()}`,
       name: newLineName.trim(),
       width: 2.75,
       height: 1.85,
-      area: 5.09,
+      area: CHAPA_AREA_M2,
       prices: {
         '6mm': p6,
         '15mm': p15,
@@ -253,9 +249,9 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
 
   // Reset to original 2025 Excel catalog
   const handleResetCatalog = () => {
-    if (confirm('Deseja restaurar todos os preços de chapas para a tabela original 2025?')) {
+    if (confirm('Deseja restaurar todos os preços de chapas para a tabela padrão de 2026?')) {
       setCatalog(INITIAL_CHAPAS_CATALOG);
-      toast.success('Catálogo de chapas 2025 restaurado com sucesso!');
+      toast.success('Catálogo de chapas 2026 restaurado com sucesso!');
     }
   };
 

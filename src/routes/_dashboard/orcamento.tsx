@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { BudgetItem, BudgetSettings, ProductItem, SavedBudget } from '@/lib/orcamento/types';
 import { DEFAULT_MATERIALS } from '@/lib/orcamento/default-materials';
 import { recalculateBudget, round2 } from '@/lib/orcamento/calculator';
+import { INITIAL_CHAPAS_CATALOG, CatalogByBrand } from '@/lib/orcamento/chapas-catalog';
+import { loadOrcamentoWorkspace, saveOrcamentoWorkspace } from '@/lib/orcamento/workspace-storage';
+import { useAuthStore } from '@/hooks/use-auth';
 import { OrcamentoCurrentTab } from '@/components/orcamento/orcamento-current-tab';
 import { OrcamentoDatabaseTab } from '@/components/orcamento/orcamento-database-tab';
 import { OrcamentoSettingsTab } from '@/components/orcamento/orcamento-settings-tab';
@@ -37,6 +40,12 @@ function OrcamentoPage() {
   const [database, setDatabase] = useState<ProductItem[]>(DEFAULT_MATERIALS);
   const [settings, setSettings] = useState<BudgetSettings>(DEFAULT_SETTINGS);
   const [savedBudgets, setSavedBudgets] = useState<SavedBudget[]>([]);
+  const [catalog, setCatalog] = useState<CatalogByBrand>(INITIAL_CHAPAS_CATALOG);
+  const [loadedBudgetId, setLoadedBudgetId] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : localStorage.getItem('df_orcamento_loaded_budget_id')
+  );
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const userId = useAuthStore(state => state.user?.id);
 
   // Fetch registered clients and their projects from Supabase
   const { data: clientsList = [] } = useQuery({
@@ -78,10 +87,35 @@ function OrcamentoPage() {
       if (currentDraft) {
         setItems(JSON.parse(currentDraft));
       }
+
+      const savedCatalog = localStorage.getItem('df_orcamento_chapas_catalog');
+      if (savedCatalog) setCatalog(JSON.parse(savedCatalog));
     } catch (e) {
       console.error('Erro ao ler dados do localStorage:', e);
     }
   }, []);
+
+  // Prefer the shared workspace when available; localStorage remains an offline fallback.
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setWorkspaceLoaded(true);
+      return;
+    }
+    loadOrcamentoWorkspace(userId)
+      .then(remote => {
+        if (cancelled || !remote) return;
+        setItems(remote.currentItems || []);
+        setSavedBudgets(remote.savedBudgets || []);
+        if (remote.settings && Object.keys(remote.settings).length) setSettings({ ...DEFAULT_SETTINGS, ...remote.settings });
+        if (remote.database?.length) setDatabase(remote.database);
+        if (remote.catalog && Object.keys(remote.catalog).length) setCatalog(remote.catalog);
+        setLoadedBudgetId(remote.currentBudgetId || null);
+      })
+      .catch(error => console.warn('Sincronização remota indisponível; usando dados locais.', error))
+      .finally(() => { if (!cancelled) setWorkspaceLoaded(true); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   // Sync database changes to localStorage
   useEffect(() => {
@@ -109,6 +143,34 @@ function OrcamentoPage() {
       console.error(e);
     }
   }, [savedBudgets]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('df_orcamento_chapas_catalog', JSON.stringify(catalog));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [catalog]);
+
+  useEffect(() => {
+    if (loadedBudgetId) localStorage.setItem('df_orcamento_loaded_budget_id', loadedBudgetId);
+    else localStorage.removeItem('df_orcamento_loaded_budget_id');
+  }, [loadedBudgetId]);
+
+  useEffect(() => {
+    if (!workspaceLoaded || !userId) return;
+    const timer = window.setTimeout(() => {
+      saveOrcamentoWorkspace(userId, {
+        currentItems: items,
+        savedBudgets,
+        settings,
+        database,
+        catalog,
+        currentBudgetId: loadedBudgetId,
+      }).catch(error => console.warn('Não foi possível sincronizar o orçamento; cópia local preservada.', error));
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [workspaceLoaded, userId, items, savedBudgets, settings, database, catalog, loadedBudgetId]);
 
   // Totals calculation
   const { totals } = recalculateBudget(items, database, settings);
@@ -139,15 +201,16 @@ function OrcamentoPage() {
     projectName: string,
     extra?: { clientId?: string; clientPhone?: string; projetoId?: string }
   ) => {
+    const existing = loadedBudgetId ? savedBudgets.find(budget => budget.id === loadedBudgetId) : undefined;
     const newBudget: SavedBudget = {
-      id: `budget-${Date.now()}`,
+      id: existing?.id || `budget-${Date.now()}`,
       name: `${clientName} - ${projectName || 'Orçamento'}`,
       client_name: clientName,
       client_phone: extra?.clientPhone,
       client_id: extra?.clientId,
       projeto_id: extra?.projetoId,
       project_environment: projectName,
-      created_at: new Date().toISOString(),
+      created_at: existing?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       status: 'RASCUNHO',
       items: [...items],
@@ -155,14 +218,18 @@ function OrcamentoPage() {
       totals: { ...totals },
     };
 
-    setSavedBudgets(prev => [newBudget, ...prev]);
-    toast.success('Orçamento salvo com sucesso!');
+    setSavedBudgets(prev => existing
+      ? prev.map(budget => budget.id === existing.id ? newBudget : budget)
+      : [newBudget, ...prev]);
+    setLoadedBudgetId(newBudget.id);
+    toast.success(existing ? 'Orçamento atualizado com sucesso!' : 'Orçamento salvo com sucesso!');
   };
 
   // Load a saved budget into current workspace
   const handleLoadBudget = (budget: SavedBudget) => {
     setItems(budget.items);
-    setSettings(budget.settings);
+    setSettings({ ...DEFAULT_SETTINGS, ...budget.settings });
+    setLoadedBudgetId(budget.id);
     setActiveTab('current');
     toast.info(`Orçamento "${budget.name}" carregado para a tela de trabalho.`);
   };
@@ -176,11 +243,15 @@ function OrcamentoPage() {
         const key = `${item.code.toLowerCase()}|||${item.description.toLowerCase()}`;
         if (combinedMap.has(key)) {
           const existing = combinedMap.get(key)!;
-          existing.quantity += item.quantity;
+          const existingQuantity = existing.original_quantity ?? existing.quantity;
+          const itemQuantity = item.original_quantity ?? item.quantity;
+          existing.quantity = round2(existingQuantity + itemQuantity);
+          existing.original_quantity = existing.quantity;
           existing.total_cost = round2(existing.unit_cost * existing.quantity);
           existing.total_price = round2(existing.unit_price * existing.quantity);
         } else {
-          combinedMap.set(key, { ...item });
+          const quantity = item.original_quantity ?? item.quantity;
+          combinedMap.set(key, { ...item, quantity, original_quantity: quantity });
         }
       }
     }
@@ -191,7 +262,11 @@ function OrcamentoPage() {
       item_number: idx + 1,
     }));
 
-    setItems(consolidatedItems);
+    const mergeSettings = selectedBudgets[0]?.settings || settings;
+    const recalculated = recalculateBudget(consolidatedItems, database, mergeSettings);
+    setItems(recalculated.items);
+    setSettings(mergeSettings);
+    setLoadedBudgetId(null);
     setActiveTab('current');
 
     const names = selectedBudgets.map(b => b.project_environment || b.name).join(' + ');
@@ -237,7 +312,7 @@ function OrcamentoPage() {
 
           <TabsTrigger value="database" className="text-xs font-semibold data-[state=active]:bg-white">
             <Database className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
-            Tabela de Preços & Chapas por Marca (2025)
+            Tabela de Preços & Chapas por Marca (2026)
           </TabsTrigger>
 
           <TabsTrigger value="settings" className="text-xs font-semibold data-[state=active]:bg-white">
@@ -251,11 +326,13 @@ function OrcamentoPage() {
             items={items}
             setItems={setItems}
             database={database}
+            catalog={catalog}
             settings={settings}
             setSettings={setSettings}
             totals={totals}
             clientsList={clientsList}
             onSaveBudget={handleSaveBudget}
+            onStartNewBudget={() => setLoadedBudgetId(null)}
           />
         </TabsContent>
 
@@ -272,6 +349,8 @@ function OrcamentoPage() {
           <OrcamentoDatabaseTab 
             database={database} 
             setDatabase={setDatabase} 
+            catalog={catalog}
+            setCatalog={setCatalog}
             settings={settings} 
           />
         </TabsContent>

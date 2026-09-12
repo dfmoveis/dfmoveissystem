@@ -158,7 +158,7 @@ export function smartMatchPromobChapa(
 
   // Extrai palavras-chave do acabamento/cor (ex: "Beige Matt" -> ["beige", "matt"])
   const tokens = normalizeText(code)
-    .replace(/[0-9\._\-]/g, ' ')
+    .replace(/[0-9._-]/g, ' ')
     .split(/\s+/)
     .filter(t => t.length >= 3 && !['mdf', 'revest', 'arauco', 'duratex', 'guararapes'].includes(t));
 
@@ -282,7 +282,7 @@ export function calculateItemPrice(
   }
 
   // Margem de lucro do item ou margem padrão
-  const marginPercent = item.margin !== undefined ? item.margin : settings.margin;
+  const marginPercent = Math.max(0, Number(item.margin !== undefined ? item.margin : settings.margin) || 0);
 
   // Fator de acréscimos globais
   const additionsFactor = calculateAdditionsFactor(settings);
@@ -292,7 +292,7 @@ export function calculateItemPrice(
   const unit_price = round2(priceWithMargin * additionsFactor);
 
   // Quantidade e unidade (considera modo chapa se aplicável)
-  let effectiveQuantity = item.quantity;
+  let effectiveQuantity = Math.max(0.01, Number(item.quantity) || 1);
   let displayUnit = matched?.unit || item.unit || 'UN';
 
   if (isItemChapa && settings.chapa_mode === 'chapa' && displayUnit.toUpperCase() === 'M2') {

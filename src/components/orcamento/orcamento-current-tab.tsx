@@ -23,7 +23,7 @@ import {
   smartMatchPromobChapa, matchProduct, chapaSalePrice
 } from '@/lib/orcamento/calculator';
 import { generateBudgetPdf } from '@/lib/orcamento/pdf-generator';
-import { INITIAL_CHAPAS_CATALOG as DEFAULT_CATALOG, BrandCatalog, CatalogByBrand } from '@/lib/orcamento/chapas-catalog';
+import { BrandCatalog, CatalogByBrand } from '@/lib/orcamento/chapas-catalog';
 
 function BudgetNumberInput({ value, onCommit, ...props }: Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> & { value: number | string; onCommit: (value: number) => void }) {
   const [draft, setDraft] = useState(String(value));
@@ -62,6 +62,7 @@ interface CurrentTabProps {
   items: BudgetItem[];
   setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>;
   database: ProductItem[];
+  catalog: CatalogByBrand;
   settings: BudgetSettings;
   setSettings: React.Dispatch<React.SetStateAction<BudgetSettings>>;
   totals: {
@@ -77,22 +78,21 @@ interface CurrentTabProps {
     projectName: string,
     extra?: { clientId?: string; clientPhone?: string; projetoId?: string }
   ) => void;
+  onStartNewBudget: () => void;
 }
 
 export function OrcamentoCurrentTab({
   items,
   setItems,
   database,
+  catalog,
   settings,
   setSettings,
   totals,
   clientsList = [],
   onSaveBudget,
+  onStartNewBudget,
 }: CurrentTabProps) {
-  const [INITIAL_CHAPAS_CATALOG] = useState<CatalogByBrand>(() => {
-    try { return JSON.parse(localStorage.getItem('df_orcamento_chapas_catalog') || 'null') || DEFAULT_CATALOG; }
-    catch { return DEFAULT_CATALOG; }
-  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -124,23 +124,23 @@ export function OrcamentoCurrentTab({
   const [selectedThickness, setSelectedThickness] = useState<'6mm' | '15mm' | '18mm' | '25mm'>('15mm');
 
   // Available brands in catalog
-  const brandsList = Object.keys(INITIAL_CHAPAS_CATALOG).filter(
-    b => INITIAL_CHAPAS_CATALOG[b].type === 'brand'
+  const brandsList = Object.keys(catalog).filter(
+    b => catalog[b].type === 'brand'
   );
 
   // Lines for selected brand in modal
   const brandLines = useMemo(() => {
-    const b = INITIAL_CHAPAS_CATALOG[selectedBrand];
+    const b = catalog[selectedBrand];
     return b && b.type === 'brand' ? (b as BrandCatalog).lines : [];
-  }, [selectedBrand]);
+  }, [catalog, selectedBrand]);
 
   // Current selected board price and m2 cost in modal
   const currentBoardPrice = useMemo(() => {
-    const brandData = INITIAL_CHAPAS_CATALOG[selectedBrand] as BrandCatalog;
+    const brandData = catalog[selectedBrand] as BrandCatalog;
     const lineObj = brandData?.lines.find(l => l.name === selectedLine);
     if (!lineObj) return 0;
     return lineObj.prices[selectedThickness] || 0;
-  }, [selectedBrand, selectedLine, selectedThickness]);
+  }, [catalog, selectedBrand, selectedLine, selectedThickness]);
 
   const currentM2Cost = useMemo(() => {
     return chapaSalePrice(currentBoardPrice);
@@ -207,6 +207,7 @@ export function OrcamentoCurrentTab({
       });
 
       setItems(newBudgetItems);
+      onStartNewBudget();
 
       toast.success(`${parsedCount} itens importados com sucesso!`, {
         description: `Custos unitários limpos para preenchimento manual conforme sua tabela.`,
@@ -394,14 +395,14 @@ export function OrcamentoCurrentTab({
     setLinkingItem(item);
 
     // Usa smart match para identificar a marca e linha mais adequadas
-    const smart = smartMatchPromobChapa(item.code, item.description, INITIAL_CHAPAS_CATALOG);
+    const smart = smartMatchPromobChapa(item.code, item.description, catalog);
     if (smart.brand && brandsList.includes(smart.brand)) {
       setSelectedBrand(smart.brand);
       setSelectedThickness(smart.thickness);
       if (smart.line) {
         setSelectedLine(smart.line);
       } else {
-        const brandData = INITIAL_CHAPAS_CATALOG[smart.brand] as BrandCatalog;
+        const brandData = catalog[smart.brand] as BrandCatalog;
         setSelectedLine(brandData?.lines[0]?.name || '');
       }
     } else {
@@ -414,7 +415,7 @@ export function OrcamentoCurrentTab({
       else if (/\b25mm\b|\.25\./i.test(raw)) setSelectedThickness('25mm');
       else setSelectedThickness('15mm');
 
-      const b = INITIAL_CHAPAS_CATALOG[foundBrand || 'Arauco'] as BrandCatalog;
+      const b = catalog[foundBrand || 'Arauco'] as BrandCatalog;
       setSelectedLine(b?.lines[0]?.name || '');
     }
 
@@ -424,7 +425,7 @@ export function OrcamentoCurrentTab({
   // Puxar valor da tabela de preço diretamente ao clicar no botão "Consultar / Vincular Chapa da Tabela"
   const handleConsultarVincularPreco = (item: BudgetItem) => {
     // 1. Tenta correspondência inteligente no catálogo de chapas (Arauco, Duratex, Guararapes, etc.)
-    const smart = smartMatchPromobChapa(item.code, item.description, INITIAL_CHAPAS_CATALOG);
+    const smart = smartMatchPromobChapa(item.code, item.description, catalog);
     if (smart.matched && smart.m2Cost > 0) {
       const updated = items.map(it => {
         if (it.id === item.id) {
@@ -496,7 +497,7 @@ export function OrcamentoCurrentTab({
       // Se já tiver custo definido e for maior que 0, preserva
 
 
-      const smart = smartMatchPromobChapa(it.code, it.description, INITIAL_CHAPAS_CATALOG);
+      const smart = smartMatchPromobChapa(it.code, it.description, catalog);
       if (smart.matched && smart.m2Cost > 0) {
         matchedCount++;
         return { ...it, ...calculateItemPrice(
@@ -546,7 +547,7 @@ export function OrcamentoCurrentTab({
   const handleApplyLink = (applyToAllSimilar: boolean) => {
     if (!linkingItem || !selectedLine) return;
 
-    const brandData = INITIAL_CHAPAS_CATALOG[selectedBrand] as BrandCatalog;
+    const brandData = catalog[selectedBrand] as BrandCatalog;
     const lineObj = brandData?.lines.find(l => l.name === selectedLine);
     if (!lineObj) return;
 
@@ -640,6 +641,7 @@ export function OrcamentoCurrentTab({
   const handleClearBudget = () => {
     if (confirm('Deseja limpar todos os itens do orçamento atual?')) {
       setItems([]);
+      onStartNewBudget();
       toast.info('Orçamento limpo.');
     }
   };
