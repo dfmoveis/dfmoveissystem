@@ -2,7 +2,11 @@ import { BudgetItem, BudgetSettings, ProductItem } from './types';
 import { INITIAL_CHAPAS_CATALOG, CatalogByBrand, BrandCatalog } from './chapas-catalog';
 
 // Constante padrão de Marcenaria no Brasil: Chapa MDF (2,75m x 1,85m = 5,0875 m² ≈ 5,09 m²)
-export const CHAPA_AREA_M2 = 5.09;
+export const CHAPA_AREA_M2 = 2.75 * 1.85;
+
+export function chapaSalePrice(price: number, area = CHAPA_AREA_M2): number {
+  return area > 0 ? round2(price * 1.30 / area) : 0;
+}
 
 // Arredondamento contábil preciso para 2 casas decimais
 export function round2(val: number): number {
@@ -191,9 +195,9 @@ export function smartMatchPromobChapa(
   }
 
   if (bestLine) {
-    const boardPrice = bestLine.prices[thickness] || bestLine.prices['15mm'] || 0;
+    const boardPrice = bestLine.prices[thickness] || 0;
     if (boardPrice && boardPrice > 0) {
-      const m2Cost = round2(boardPrice / CHAPA_AREA_M2);
+      const m2Cost = chapaSalePrice(boardPrice, bestLine.width * bestLine.height);
       return {
         matched: true,
         brand: detectedBrand,
@@ -245,15 +249,16 @@ export function calculateItemPrice(
     unit?: string;
     unit_cost?: number;
     margin?: number;
+    price_unlinked?: boolean;
   },
   database: ProductItem[],
   settings: BudgetSettings
 ): BudgetItem {
   // 1. Tenta correspondência direta no banco de produtos
-  const { product: matched, isSubcodeMatch } = matchProduct(item.code, item.description, database);
+  const { product: matched, isSubcodeMatch } = matchProduct(item.code, item.description, item.price_unlinked ? [] : database);
 
   // 2. Se não encontrou no banco direto, roda o Smart Matcher de Chapas por Marca (Arauco, Duratex, etc.)
-  const smart = !matched ? smartMatchPromobChapa(item.code, item.description) : null;
+  const smart = !matched && !item.price_unlinked ? smartMatchPromobChapa(item.code, item.description) : null;
 
   const found = !!matched || (smart ? smart.matched : false);
   const isItemChapa = isChapa(item.code, item.description) || (smart ? smart.matched : false);
@@ -261,7 +266,7 @@ export function calculateItemPrice(
 
   // Custo base unitário
   let unit_cost = 0;
-  if (item.unit_cost !== undefined && item.unit_cost > 0) {
+  if (item.unit_cost !== undefined && item.unit_cost >= 0) {
     unit_cost = item.unit_cost;
   } else if (matched) {
     unit_cost = matched.unit_price;
@@ -325,6 +330,7 @@ export function calculateItemPrice(
     total_cost,
     total_price,
     found,
+    price_unlinked: item.price_unlinked,
     is_chapa: isItemChapa,
     is_fita: isItemFita,
     fita_metros: isItemFita ? fitaMetros : undefined,
@@ -359,6 +365,7 @@ export function recalculateBudget(
         unit: it.original_unit || it.unit,
         unit_cost: it.unit_cost,
         margin: it.margin,
+        price_unlinked: it.price_unlinked,
       },
       database,
       settings

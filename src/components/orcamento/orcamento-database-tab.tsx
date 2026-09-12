@@ -21,7 +21,7 @@ import { DEFAULT_MATERIALS } from '@/lib/orcamento/default-materials';
 import { 
   INITIAL_CHAPAS_CATALOG, CatalogByBrand, ChapaLineItem, AcessorioItem, BrandCatalog, AcessoriosCatalog 
 } from '@/lib/orcamento/chapas-catalog';
-import { CHAPA_AREA_M2, round2, calculateAdditionsFactor } from '@/lib/orcamento/calculator';
+import { CHAPA_AREA_M2, round2, chapaSalePrice, calculateAdditionsFactor } from '@/lib/orcamento/calculator';
 
 interface DatabaseTabProps {
   database: ProductItem[];
@@ -170,7 +170,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
       for (const item of thicknesses) {
         if (!item.price) continue;
         const code = `${brand.toUpperCase()}-${lineName.toUpperCase().replace(/\\s+/g, '_')}-${item.th.toUpperCase()}`;
-        const m2Price = round2(item.price / CHAPA_AREA_M2);
+        const m2Price = chapaSalePrice(item.price);
 
         const existingIdx = next.findIndex(p => p.code === code);
         const subcodes = [
@@ -433,7 +433,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
                                     {p6.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                   </span>
                                   <span className="block text-[10px] text-slate-400">
-                                    {(p6 / line.area).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
+                                    {(chapaSalePrice(p6, line.width * line.height)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
                                   </span>
                                 </div>
                               ) : (
@@ -454,7 +454,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
                                     </span>
                                   )}
                                   <span className="block text-[10px] text-slate-400">
-                                    {(p15 / line.area).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
+                                    {(chapaSalePrice(p15, line.width * line.height)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
                                   </span>
                                 </div>
                               ) : (
@@ -475,7 +475,7 @@ export function OrcamentoDatabaseTab({ database, setDatabase, settings }: Databa
                                     </span>
                                   )}
                                   <span className="block text-[10px] text-slate-400">
-                                    {(p18 / line.area).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
+                                    {(chapaSalePrice(p18, line.width * line.height)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/m²
                                   </span>
                                 </div>
                               ) : (
